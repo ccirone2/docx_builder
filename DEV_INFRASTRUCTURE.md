@@ -2,7 +2,7 @@
 ## Claude Code Setup for Quality, Plan-Driven Development
 
 This guide describes the full set of files, hooks, agents, skills, and
-commands to add to the `docgen` repo for a disciplined, self-documenting
+commands to add to the `docx_builder` repo for a disciplined, self-documenting
 development workflow using Claude Code.
 
 ---
@@ -37,7 +37,7 @@ Every development cycle should follow this loop:
 ## File Structure
 
 ```
-docgen/
+docx_builder/
 ├── CLAUDE.md                           # ← Primary context for Claude Code
 ├── .claude/
 │   ├── settings.json                   # Hooks, permissions, env
@@ -489,13 +489,13 @@ who picks up the work.
 name: schema-author
 description: >
   Specialist in writing and validating YAML schema definitions and
-  document templates for the docgen system. Use when creating new
+  document templates for the docx_builder system. Use when creating new
   schemas, modifying existing ones, or authoring document templates.
 tools: Read, Write, Edit, Glob, Grep, Bash(python*)
 model: sonnet
 ---
 
-You are an expert in the docgen schema system. You know:
+You are an expert in the docx_builder schema system. You know:
 
 ## Schema Structure
 - Three-tier fields: core (required), optional, flexible
@@ -532,11 +532,11 @@ You are an expert in the docgen schema system. You know:
 ---
 name: python-conventions
 description: >
-  Python coding conventions for the docgen project. Apply when writing
+  Python coding conventions for the docx_builder project. Apply when writing
   or editing any Python file in the engine/ directory.
 ---
 
-# Python Conventions for docgen
+# Python Conventions for docx_builder
 
 ## Type Hints
 - All function signatures must have type hints
@@ -590,7 +590,7 @@ def my_function(schema: Schema, data: dict[str, Any]) -> str:
 ---
 name: schema-system
 description: >
-  Schema system architecture and patterns for the docgen project.
+  Schema system architecture and patterns for the docx_builder project.
   Apply when working with schema_loader.py, data_exchange.py, YAML
   schema files, or any code that touches field definitions.
 ---
