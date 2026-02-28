@@ -16,14 +16,10 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pyyaml ruff pyright
+        run: pip install pyyaml python-docx docxtpl jinja2 ruff pytest
 
       - name: Lint
         run: ruff check engine/
-
-      - name: Type check
-        run: pyright engine/
-        continue-on-error: true
 
       - name: Load all schemas
         run: |
@@ -33,7 +29,7 @@ jobs:
           for p in sorted(Path('schemas').glob('*.yaml')):
               if p.name == 'registry.yaml': continue
               s = load_schema(p)
-              print(f'✅ {s.id}: {s.name} ({len(s.all_fields)} fields)')
+              print(f'OK {s.id}: {s.name} ({len(s.all_fields)} fields)')
           "
 
       - name: Validate registry
@@ -45,9 +41,8 @@ jobs:
           for entry in reg['schemas']:
               assert 'id' in entry, f'Missing id in registry entry'
               assert 'schema_file' in entry, f'Missing schema_file for {entry[\"id\"]}'
-              print(f'✅ {entry[\"id\"]}: {entry[\"name\"]}')
+              print(f'OK {entry[\"id\"]}: {entry[\"name\"]}')
           "
 
       - name: Run tests
         run: PYTHONPATH=. python -m pytest tests/ -v
-        if: hashFiles('tests/') != ''

@@ -12,12 +12,11 @@ All fetching uses `requests`, which works in Pyodide.
 
 from __future__ import annotations
 
-import sys
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from typing import Any
 
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -25,9 +24,7 @@ import yaml
 
 # Default GitHub base URL. Users can override this on the Control sheet
 # to point at their fork or a different branch.
-DEFAULT_GITHUB_BASE = (
-    "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
-)
+DEFAULT_GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
 
 # Paths within the repo
 REGISTRY_PATH = "schemas/registry.yaml"
@@ -52,6 +49,7 @@ def clear_cache():
 # Core fetch function
 # ---------------------------------------------------------------------------
 
+
 def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """
     Fetch a text file from GitHub raw URL with session caching.
@@ -71,6 +69,7 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
 
     try:
         import requests
+
         response = requests.get(url, timeout=15)
         response.raise_for_status()
         _cache[url] = response.text
@@ -84,9 +83,11 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
 # Registry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RegistryEntry:
     """Single entry from the schema registry."""
+
     id: str
     name: str
     version: str
@@ -112,17 +113,19 @@ def fetch_registry(base_url: str = DEFAULT_GITHUB_BASE) -> list[RegistryEntry]:
     raw = yaml.safe_load(text)
     entries = []
     for s in raw.get("schemas", []):
-        entries.append(RegistryEntry(
-            id=s["id"],
-            name=s["name"],
-            version=s.get("version", "1.0"),
-            schema_file=s["schema_file"],
-            template_file=s.get("template_file", ""),
-            description=s.get("description", ""),
-            category=s.get("category", ""),
-            tags=s.get("tags", []),
-            source="github",
-        ))
+        entries.append(
+            RegistryEntry(
+                id=s["id"],
+                name=s["name"],
+                version=s.get("version", "1.0"),
+                schema_file=s["schema_file"],
+                template_file=s.get("template_file", ""),
+                description=s.get("description", ""),
+                category=s.get("category", ""),
+                tags=s.get("tags", []),
+                source="github",
+            )
+        )
     return entries
 
 
@@ -130,16 +133,13 @@ def fetch_registry(base_url: str = DEFAULT_GITHUB_BASE) -> list[RegistryEntry]:
 # Schema fetching
 # ---------------------------------------------------------------------------
 
-def fetch_schema_yaml(
-    schema_file: str, base_url: str = DEFAULT_GITHUB_BASE
-) -> str | None:
+
+def fetch_schema_yaml(schema_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """Fetch a schema YAML file from GitHub."""
     return fetch_text(f"{SCHEMAS_DIR}/{schema_file}", base_url)
 
 
-def fetch_schema(
-    schema_file: str, base_url: str = DEFAULT_GITHUB_BASE
-) -> Any:
+def fetch_schema(schema_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> Any:
     """Fetch and parse a schema YAML file. Returns raw dict."""
     text = fetch_schema_yaml(schema_file, base_url)
     if text is None:
@@ -151,9 +151,8 @@ def fetch_schema(
 # Template fetching
 # ---------------------------------------------------------------------------
 
-def fetch_template_source(
-    template_file: str, base_url: str = DEFAULT_GITHUB_BASE
-) -> str | None:
+
+def fetch_template_source(template_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """Fetch a template Python module as source text."""
     return fetch_text(f"{TEMPLATES_DIR}/{template_file}", base_url)
 
@@ -296,6 +295,7 @@ def get_local_template_source(schema_id: str) -> str | None:
 # ---------------------------------------------------------------------------
 # Unified schema resolution
 # ---------------------------------------------------------------------------
+
 
 def resolve_all_schemas(
     base_url: str = DEFAULT_GITHUB_BASE,

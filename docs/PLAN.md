@@ -1,26 +1,34 @@
 # Development Plan
 
-## Current Phase: Phase 2 — GitHub Loader Integration
+## Current Phase: Phase A — Complete Build (all phases)
 
 ### Status: 🟡 In Progress
 
-### Tasks
+### Completed Phases
 
-| # | Task | Issue | Status | Notes |
-|---|------|-------|--------|-------|
-| 1 | Implement github_loader.py | #3 | ✅ Done | Core fetch + local registration |
-| 2 | Add load_schema_from_text() | #3 | ✅ Done | For string-based schema loading |
-| 3 | Create registry.yaml | #4 | ✅ Done | Master schema index |
-| 4 | Add session caching | #5 | 🔲 Todo | In-memory cache for fetched files |
-| 5 | Add bundled fallback | #6 | 🔲 Todo | Offline support |
+| Phase | Component | Status | Notes |
+|-------|-----------|--------|-------|
+| 1 | Schema system | ✅ Done | YAML parser, validator, compound fields |
+| 1b | Data exchange | ✅ Done | YAML import/export, LLM prompts, redaction |
+| 2a | GitHub loader | ✅ Done | Core fetch, local registration, resolution |
+| 2a | Registry | ✅ Done | Master schema index |
 
-### Next Phase: Phase 3 — Excel Builder
-- Auto-generate data entry sheets from schema
-- Format cells, dropdowns, conditional visibility
-- See ARCHITECTURE.md Phase 3 for details
+### Active Build Phases
+
+| Phase | Task | Status | Notes |
+|-------|------|--------|-------|
+| A | Project setup — pyproject.toml, docs, CI, tests | 🟡 In Progress | |
+| B | GitHub loader — TTL caching, bundled fallback | 🔲 Planned | |
+| C | Excel builder — schema-driven sheet generation | 🔲 Planned | |
+| D | Document builder — python-docx RFQ generation | 🔲 Planned | |
+| E | Browser download bridge — generate-and-download | 🔲 Planned | |
+| F | Workbook bootstrap — xlwings Lite scripts | 🔲 Planned | |
+| G | Local customization & validation UX | 🔲 Planned | |
+| H | Finalization — full test pass, docs, issues | 🔲 Planned | |
 
 ### Backlog
-- [ ] Phase 4: Document builder (python-docx templates)
-- [ ] Phase 5: Browser download bridge
-- [ ] Phase 6: Workbook bootstrap
-- [ ] Phase 7: Local customization UX
+
+- [ ] Phase 9: Contribution tooling — schema/template validation CLI
+- [ ] Phase 10: Template system v2 — docxtpl hosted templates
+- [ ] More schemas: Change Order, Bid Tabulation, Safety Plan
+- [ ] Workbook distribution — pre-built .xlsx with embedded scripts

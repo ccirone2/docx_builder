@@ -13,8 +13,8 @@ Usage:
 
 from __future__ import annotations
 
-import io
 import base64
+import io
 import sys
 
 
@@ -39,10 +39,7 @@ def trigger_docx_download(doc, filename: str = "document.docx"):
         _browser_download(
             byte_data,
             filename,
-            mime_type=(
-                "application/vnd.openxmlformats-officedocument"
-                ".wordprocessingml.document"
-            ),
+            mime_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
         )
     else:
         # Fallback: save to local filesystem (for development/testing)
@@ -51,9 +48,7 @@ def trigger_docx_download(doc, filename: str = "document.docx"):
         print(f"Saved to {filename}")
 
 
-def trigger_bytes_download(
-    data: bytes, filename: str, mime_type: str = "application/octet-stream"
-):
+def trigger_bytes_download(data: bytes, filename: str, mime_type: str = "application/octet-stream"):
     """
     Generic download trigger for any byte data.
     """
@@ -74,8 +69,9 @@ def _browser_download(data: bytes, filename: str, mime_type: str):
     and cleans up.
     """
     try:
+        from js import URL, Blob, Uint8Array
+        from js import document as js_doc
         from pyodide.ffi import to_js
-        from js import Uint8Array, Blob, URL, document as js_doc
 
         # Convert Python bytes → JS Uint8Array → Blob
         js_array = Uint8Array.new(to_js(data))
@@ -98,7 +94,7 @@ def _browser_download(data: bytes, filename: str, mime_type: str):
 
     except ImportError:
         # If JS bridge isn't available, fall back to base64 approach
-        print(f"Warning: JS bridge not available. Using base64 fallback.")
+        print("Warning: JS bridge not available. Using base64 fallback.")
         b64 = base64.b64encode(data).decode("ascii")
         print(f"Base64 data ({len(data)} bytes) for {filename}:")
         print(f"data:{mime_type};base64,{b64[:100]}...")

@@ -14,13 +14,13 @@ from pathlib import Path
 
 from engine.schema_loader import Schema
 
-
 PLACEHOLDER_PATTERN = r"\{\{(\w+)\}\}"  # e.g. {{rfq_number}}
 
 
 @dataclass
 class TemplateInfo:
     """Metadata about a document template."""
+
     schema_id: str
     template_path: Path
     exists: bool

@@ -1,0 +1,29 @@
+[project]
+name = "docx_builder"
+version = "0.1.0"
+description = "Template-driven document generator for electric utility RFQs"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml",
+    "python-docx",
+    "docxtpl",
+    "jinja2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "pyright",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
