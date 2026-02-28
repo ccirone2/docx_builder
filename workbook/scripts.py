@@ -471,3 +471,56 @@ def generate_llm_prompt(book: Any) -> None:
 
     except Exception as e:
         _set_status(book, f"Error: {e}")
+
+
+@script(button="[btn_load_schema]Control!B17")
+def load_custom_schema(book: Any) -> None:
+    """Read YAML from staging cell and register as local schema."""
+    try:
+        _set_status(book, "Loading custom schema...")
+
+        control = book.sheets["Control"]
+        yaml_text = control[YAML_STAGING_CELL].value
+
+        if not yaml_text:
+            _set_status(book, "Error: No YAML in staging cell")
+            return
+
+        gh_loader = _load_module("github_loader")
+        entry = gh_loader["register_local_schema"](str(yaml_text))
+
+        if entry is None:
+            _set_status(book, "Error: Invalid schema YAML")
+            return
+
+        _set_status(book, f"Custom schema loaded: {entry.name}")
+
+    except Exception as e:
+        _set_status(book, f"Error: {e}")
+
+
+@script(button="[btn_load_template]Control!B19")
+def load_custom_template(book: Any) -> None:
+    """Read Python template source from staging cell."""
+    try:
+        _set_status(book, "Loading custom template...")
+
+        control = book.sheets["Control"]
+        source = control[YAML_STAGING_CELL].value
+
+        if not source:
+            _set_status(book, "Error: No template source in staging cell")
+            return
+
+        # Validate the template has a build_document function
+        gh_loader = _load_module("github_loader")
+        builder = gh_loader["load_template_builder"](str(source))
+
+        if builder is None:
+            _set_status(book, "Error: Template must define build_document()")
+            return
+
+        _set_status(book, "Custom template loaded successfully")
+
+    except Exception as e:
+        _set_status(book, f"Error: {e}")
