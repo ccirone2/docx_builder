@@ -18,8 +18,8 @@ SHEET_CONTROL = "Control"
 SHEET_DATA_CORE = "Data - Core"
 SHEET_DATA_OPTIONAL = "Data - Optional"
 SHEET_DATA_FLEXIBLE = "Data - Flexible"
-SHEET_TABLES_PREFIX = "Tables"     # e.g., "Tables - Work Items"
-SHEET_SCHEMA = "_Schema"           # hidden sheet with schema data
+SHEET_TABLES_PREFIX = "Tables"  # e.g., "Tables - Work Items"
+SHEET_SCHEMA = "_Schema"  # hidden sheet with schema data
 SHEET_TEMPLATE_CONFIG = "_Config"  # hidden sheet with template settings
 
 # --- Schema storage ---
@@ -28,7 +28,7 @@ SHEET_TEMPLATE_CONFIG = "_Config"  # hidden sheet with template settings
 SCHEMA_SOURCE = "embedded"  # "embedded" | "sheet" | "yaml"
 
 # --- Document generation ---
-DEFAULT_DATE_FORMAT = "%B %d, %Y"   # "January 15, 2026"
+DEFAULT_DATE_FORMAT = "%B %d, %Y"  # "January 15, 2026"
 PLACEHOLDER_OPEN = "{{"
 PLACEHOLDER_CLOSE = "}}"
 DEFAULT_FONT = "Arial"
@@ -43,10 +43,10 @@ TEMPLATE_STRATEGY = "programmatic"
 STRICT_VALIDATION = False  # If True, warnings also block generation
 
 # --- Excel formatting ---
-HEADER_COLOR = "#1F4E79"           # dark blue for group headers
-HEADER_FONT_COLOR = "#FFFFFF"      # white text on headers
+HEADER_COLOR = "#1F4E79"  # dark blue for group headers
+HEADER_FONT_COLOR = "#FFFFFF"  # white text on headers
 REQUIRED_INDICATOR_COLOR = "#C00000"  # red asterisk for required fields
-OPTIONAL_BG_COLOR = "#F2F2F2"      # light gray for optional sections
+OPTIONAL_BG_COLOR = "#F2F2F2"  # light gray for optional sections
 INPUT_CELL_BORDER_COLOR = "#B4C6E7"  # light blue border for input cells
 
 # --- Logging ---

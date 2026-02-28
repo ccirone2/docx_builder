@@ -9,22 +9,23 @@ A schema defines:
 
 from __future__ import annotations
 
-import os
 import re
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FieldDef:
     """Single field definition from the schema."""
+
     key: str
     label: str
     type: str  # text, multiline, date, number, currency, choice, boolean, table, compound
@@ -33,12 +34,12 @@ class FieldDef:
     default: Any = None
     choices: list[str] | None = None
     validation: dict | None = None
-    columns: list[dict] | None = None          # for table type
-    default_rows: list[dict] | None = None     # for table type
+    columns: list[dict] | None = None  # for table type
+    default_rows: list[dict] | None = None  # for table type
     formula: str | None = None
-    conditional_on: dict | None = None         # {"field": ..., "value": ...}
-    redact: bool = False                       # if True, value is masked during redacted export
-    sub_fields: list['FieldDef'] | None = None  # for compound type — nested named fields
+    conditional_on: dict | None = None  # {"field": ..., "value": ...}
+    redact: bool = False  # if True, value is masked during redacted export
+    sub_fields: list["FieldDef"] | None = None  # for compound type — nested named fields
 
     @property
     def is_table(self) -> bool:
@@ -66,6 +67,7 @@ class FieldDef:
 @dataclass
 class FieldGroup:
     """A named group of fields (e.g. 'Issuing Organization')."""
+
     name: str
     fields: list[FieldDef]
     section: str = "core"  # "core", "optional", or "flexible"
@@ -74,6 +76,7 @@ class FieldGroup:
 @dataclass
 class FlexibleFieldsConfig:
     """Configuration for the freeform fields section."""
+
     enabled: bool = True
     max_entries: int = 20
     label: str = "Additional Information"
@@ -84,6 +87,7 @@ class FlexibleFieldsConfig:
 @dataclass
 class Schema:
     """Complete document schema."""
+
     id: str
     name: str
     version: str
@@ -156,6 +160,7 @@ class Schema:
 # ---------------------------------------------------------------------------
 # Parser
 # ---------------------------------------------------------------------------
+
 
 def _parse_field(raw: dict) -> FieldDef:
     """Parse a single field definition from raw YAML dict."""
@@ -241,6 +246,7 @@ def load_schema_from_text(yaml_text: str) -> Schema:
 # Discovery — find all schemas in a directory
 # ---------------------------------------------------------------------------
 
+
 def discover_schemas(directory: str | Path) -> dict[str, Path]:
     """Return {schema_id: path} for all .yaml files in directory."""
     directory = Path(directory)
@@ -260,9 +266,11 @@ def discover_schemas(directory: str | Path) -> dict[str, Path]:
 # Validation
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ValidationResult:
     """Result of validating user data against a schema."""
+
     valid: bool
     errors: list[str] = dc_field(default_factory=list)
     warnings: list[str] = dc_field(default_factory=list)
@@ -289,7 +297,7 @@ def validate_data(schema: Schema, data: dict[str, Any]) -> ValidationResult:
                 errors.append(f"Missing required field: {f.label} ({f.key})")
             else:
                 # Validate required sub-fields within the compound
-                for sf in (f.sub_fields or []):
+                for sf in f.sub_fields or []:
                     if sf.required:
                         sv = val.get(sf.key)
                         if sv is None or (isinstance(sv, str) and sv.strip() == ""):
@@ -311,12 +319,11 @@ def validate_data(schema: Schema, data: dict[str, Any]) -> ValidationResult:
 
         # Compound field — validate sub-field values
         if f.is_compound and isinstance(val, dict):
-            for sf in (f.sub_fields or []):
+            for sf in f.sub_fields or []:
                 sv = val.get(sf.key)
                 if sv is None:
                     continue
-                _validate_single_field(sf, sv, errors, warnings,
-                                       label_prefix=f"{f.label} → ")
+                _validate_single_field(sf, sv, errors, warnings, label_prefix=f"{f.label} → ")
             continue
 
         _validate_single_field(f, val, errors, warnings)
@@ -365,7 +372,6 @@ def _validate_single_field(
 
 if __name__ == "__main__":
     import sys
-    import json
 
     path = sys.argv[1] if len(sys.argv) > 1 else "schemas/rfq_electric_utility.yaml"
     schema = load_schema(path)

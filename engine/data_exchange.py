@@ -14,22 +14,21 @@ The YAML format is designed to be:
 
 from __future__ import annotations
 
-import io
-import re
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
-from engine.schema_loader import Schema, FieldDef, FieldGroup
-
+from engine.schema_loader import FieldDef, FieldGroup, Schema
 
 # ---------------------------------------------------------------------------
 # YAML formatting helpers
 # ---------------------------------------------------------------------------
 
+
 class _YAMLDumper(yaml.SafeDumper):
     """Custom YAML dumper that produces clean, human-readable output."""
+
     pass
 
 
@@ -118,6 +117,7 @@ def _redact_compound(field: FieldDef, value: dict) -> dict:
 # EXPORT — Excel data → YAML string
 # ---------------------------------------------------------------------------
 
+
 def _export_field_value(field: FieldDef, val: Any, redact: bool) -> Any:
     """Export a single field value with optional redaction. Handles all types."""
     if redact and field.redact:
@@ -182,10 +182,14 @@ def export_snapshot(
     flex_data = data.get("_flexible_fields")
     if flex_data:
         if redact:
-            output["additional_information"] = [
-                {"field_label": entry.get("field_label", ""), "field_value": REDACTED_TEXT}
-                for entry in flex_data
-            ] if isinstance(flex_data, list) else REDACTED_TEXT
+            output["additional_information"] = (
+                [
+                    {"field_label": entry.get("field_label", ""), "field_value": REDACTED_TEXT}
+                    for entry in flex_data
+                ]
+                if isinstance(flex_data, list)
+                else REDACTED_TEXT
+            )
         else:
             output["additional_information"] = flex_data
 
@@ -215,6 +219,7 @@ def _serialize_value(field: FieldDef, value: Any) -> Any:
 # ---------------------------------------------------------------------------
 # IMPORT — YAML string → validated data dict
 # ---------------------------------------------------------------------------
+
 
 def import_snapshot(schema: Schema, yaml_text: str) -> tuple[dict[str, Any], list[str]]:
     """
@@ -266,7 +271,7 @@ def import_snapshot(schema: Schema, yaml_text: str) -> tuple[dict[str, Any], lis
                 if field_def.is_compound and isinstance(value, dict):
                     # Compound field: deserialize each sub-field
                     compound_data = {}
-                    for sf in (field_def.sub_fields or []):
+                    for sf in field_def.sub_fields or []:
                         sv = value.get(sf.key)
                         compound_data[sf.key] = _deserialize_value(sf, sv)
                     data[field_key] = compound_data
@@ -309,6 +314,7 @@ def _deserialize_value(field: FieldDef, value: Any) -> Any:
 # ---------------------------------------------------------------------------
 # LLM PROMPT — Generate a schema-aware prompt for LLM assistance
 # ---------------------------------------------------------------------------
+
 
 def generate_llm_prompt(
     schema: Schema,
@@ -468,9 +474,7 @@ def _render_field_for_llm(
     return lines
 
 
-def _render_table_for_llm(
-    field: FieldDef, existing_value: Any, redact: bool = False
-) -> list[str]:
+def _render_table_for_llm(field: FieldDef, existing_value: Any, redact: bool = False) -> list[str]:
     """Render a table-type field for LLM fill-in, with optional column redaction."""
     lines = []
     lines.append(f"  {field.key}:")
@@ -515,7 +519,7 @@ def _render_compound_for_llm(
     lines.append(f"  {field.key}:")
     existing = existing_value if isinstance(existing_value, dict) else {}
 
-    for sf in (field.sub_fields or []):
+    for sf in field.sub_fields or []:
         # Sub-field comment
         sf_parts = []
         if sf.required:
@@ -566,6 +570,7 @@ def _format_existing_value(field: FieldDef, value: Any) -> str:
 # LLM SCHEMA REFERENCE — Compact schema description for LLM context
 # ---------------------------------------------------------------------------
 
+
 def generate_schema_reference(schema: Schema) -> str:
     """
     Generate a compact, readable schema reference for sharing with an LLM.
@@ -577,8 +582,9 @@ def generate_schema_reference(schema: Schema) -> str:
     lines = []
     lines.append(f"# Schema Reference: {schema.name}")
     lines.append(f"# ID: {schema.id} | Version: {schema.version}")
-    lines.append(f"# Total fields: {len(schema.all_fields)} "
-                 f"({len(schema.get_required_fields())} required)")
+    lines.append(
+        f"# Total fields: {len(schema.all_fields)} ({len(schema.get_required_fields())} required)"
+    )
     lines.append("")
 
     for group in schema.all_groups:
@@ -642,10 +648,22 @@ if __name__ == "__main__":
         "estimated_duration": "90 calendar days",
         "scope_summary": "Replace 45 wooden poles with steel...",
         "work_items": [
-            {"item_number": "1", "description": "Set 45' Class 2 steel poles",
-             "quantity": 45, "unit": "EA", "unit_price": 4200, "extended_price": 189000},
-            {"item_number": "2", "description": "String 477 ACSR conductor",
-             "quantity": 3.2, "unit": "MI", "unit_price": 28000, "extended_price": 89600},
+            {
+                "item_number": "1",
+                "description": "Set 45' Class 2 steel poles",
+                "quantity": 45,
+                "unit": "EA",
+                "unit_price": 4200,
+                "extended_price": 189000,
+            },
+            {
+                "item_number": "2",
+                "description": "String 477 ACSR conductor",
+                "quantity": 3.2,
+                "unit": "MI",
+                "unit_price": 28000,
+                "extended_price": 89600,
+            },
         ],
         "specifications": "All work per NESC and RUS standards",
         "submission_method": "Email Only",
@@ -691,12 +709,29 @@ if __name__ == "__main__":
     )
     # Show just the issuer and scope sections to demonstrate
     for line in prompt.splitlines():
-        if any(x in line for x in [
-            "issuer_", "work_items", "item_number", "description:", "unit_price",
-            "extended_price", "quantity", "unit:", "submission_addr",
-            "REDACTED", "START YAML", "END YAML", "Issuing", "Scope",
-            "PROJECT CONTEXT", "_meta", "schema_id", "redacted",
-        ]):
+        if any(
+            x in line
+            for x in [
+                "issuer_",
+                "work_items",
+                "item_number",
+                "description:",
+                "unit_price",
+                "extended_price",
+                "quantity",
+                "unit:",
+                "submission_addr",
+                "REDACTED",
+                "START YAML",
+                "END YAML",
+                "Issuing",
+                "Scope",
+                "PROJECT CONTEXT",
+                "_meta",
+                "schema_id",
+                "redacted",
+            ]
+        ):
             print(line)
 
     print()
@@ -705,11 +740,20 @@ if __name__ == "__main__":
     print("=" * 70)
     redacted_yaml = export_snapshot(schema, sample_data, redact=True)
     imported, warnings = import_snapshot(schema, redacted_yaml)
-    for key in ["issuer_name", "issuer_contact_email", "rfq_number", "rfq_title",
-                "project_location", "submission_address"]:
+    for key in [
+        "issuer_name",
+        "issuer_contact_email",
+        "rfq_number",
+        "rfq_title",
+        "project_location",
+        "submission_address",
+    ]:
         print(f"  {key}: {imported.get(key)}")
-    print(f"  (redacted fields correctly returned as None ✓)" 
-          if imported.get("issuer_name") is None else "  ERROR: redacted data leaked!")
+    print(
+        "  (redacted fields correctly returned as None ✓)"
+        if imported.get("issuer_name") is None
+        else "  ERROR: redacted data leaked!"
+    )
 
     print()
     print("=" * 70)
@@ -729,5 +773,17 @@ if __name__ == "__main__":
     print("=" * 70)
     ref = generate_schema_reference(schema)
     for line in ref.splitlines():
-        if "safety" in line.lower() or "compound" in line.lower() or ".general" in line or ".hot_work" in line or ".lockout" in line or ".ppe" in line or ".training" in line or ".incident" in line or ".confined" in line or "Additional Provisions" in line:
+        keywords = [
+            "safety",
+            "compound",
+            ".general",
+            ".hot_work",
+            ".lockout",
+            ".ppe",
+            ".training",
+            ".incident",
+            ".confined",
+            "Additional Provisions",
+        ]
+        if any(kw in line.lower() if kw[0] != "." else kw in line for kw in keywords):
             print(line)

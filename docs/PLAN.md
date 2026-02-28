@@ -1,26 +1,35 @@
 # Development Plan
 
-## Current Phase: Phase 2 — GitHub Loader Integration
+## Current Phase: Complete — All Core Phases Done
 
-### Status: 🟡 In Progress
+### Status: ✅ Complete
 
-### Tasks
+### Completed Phases
 
-| # | Task | Issue | Status | Notes |
-|---|------|-------|--------|-------|
-| 1 | Implement github_loader.py | #3 | ✅ Done | Core fetch + local registration |
-| 2 | Add load_schema_from_text() | #3 | ✅ Done | For string-based schema loading |
-| 3 | Create registry.yaml | #4 | ✅ Done | Master schema index |
-| 4 | Add session caching | #5 | 🔲 Todo | In-memory cache for fetched files |
-| 5 | Add bundled fallback | #6 | 🔲 Todo | Offline support |
+| Phase | Component | Status | Notes |
+|-------|-----------|--------|-------|
+| 1 | Schema system | ✅ Done | YAML parser, validator, compound fields |
+| 1b | Data exchange | ✅ Done | YAML import/export, LLM prompts, redaction |
+| 2a | GitHub loader | ✅ Done | Core fetch, local registration, resolution |
+| 2a | Registry | ✅ Done | Master schema index |
+| A | Project setup | ✅ Done | pyproject.toml, docs, CI, tests |
+| B | GitHub loader completion | ✅ Done | TTL caching, bundled fallback |
+| C | Excel builder | ✅ Done | Schema-driven sheet generation |
+| D | Document builder | ✅ Done | python-docx RFQ generation |
+| E | Browser download bridge | ✅ Done | generate_and_download pipeline |
+| F | Workbook bootstrap | ✅ Done | xlwings Lite scripts |
+| G | Local customization & validation | ✅ Done | Custom schemas, validation UX |
+| H | Finalization | ✅ Done | 56 tests, lint clean, docs updated |
 
-### Next Phase: Phase 3 — Excel Builder
-- Auto-generate data entry sheets from schema
-- Format cells, dropdowns, conditional visibility
-- See ARCHITECTURE.md Phase 3 for details
+### Test Summary
+
+- 56 tests across 7 test files
+- All passing, lint clean
+- Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux
 
 ### Backlog
-- [ ] Phase 4: Document builder (python-docx templates)
-- [ ] Phase 5: Browser download bridge
-- [ ] Phase 6: Workbook bootstrap
-- [ ] Phase 7: Local customization UX
+
+- [ ] More schemas: Change Order, Bid Tabulation, Safety Plan
+- [ ] Template system v2: docxtpl hosted templates
+- [ ] Contribution tooling: schema/template validation CLI
+- [ ] Workbook distribution: pre-built .xlsx with embedded scripts

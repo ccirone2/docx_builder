@@ -12,12 +12,12 @@ All fetching uses `requests`, which works in Pyodide.
 
 from __future__ import annotations
 
-import sys
-from dataclasses import dataclass, field as dc_field
+import time
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from typing import Any
 
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -25,9 +25,7 @@ import yaml
 
 # Default GitHub base URL. Users can override this on the Control sheet
 # to point at their fork or a different branch.
-DEFAULT_GITHUB_BASE = (
-    "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
-)
+DEFAULT_GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
 
 # Paths within the repo
 REGISTRY_PATH = "schemas/registry.yaml"
@@ -35,26 +33,81 @@ SCHEMAS_DIR = "schemas"
 TEMPLATES_DIR = "templates"
 ENGINE_DIR = "engine"
 
+# Cache TTL in seconds (5 minutes)
+CACHE_TTL = 300
+
 
 # ---------------------------------------------------------------------------
-# Session cache
+# Session cache with TTL
 # ---------------------------------------------------------------------------
 
 _cache: dict[str, str] = {}
+_cache_timestamps: dict[str, float] = {}
 
 
-def clear_cache():
+def clear_cache() -> None:
     """Clear the session cache (e.g., after changing GitHub URL)."""
     _cache.clear()
+    _cache_timestamps.clear()
+
+
+def is_cache_fresh(url: str) -> bool:
+    """Check if a cached item is still within its TTL.
+
+    Args:
+        url: The URL to check.
+
+    Returns:
+        True if the cached item exists and is within TTL.
+    """
+    if url not in _cache_timestamps:
+        return False
+    return (time.time() - _cache_timestamps[url]) < CACHE_TTL
+
+
+# ---------------------------------------------------------------------------
+# Bundled schemas (for offline fallback)
+# ---------------------------------------------------------------------------
+
+_bundled_schemas: dict[str, str] = {}
+
+
+def register_bundled_schema(schema_id: str, yaml_text: str) -> None:
+    """Preload a schema YAML for offline fallback.
+
+    Args:
+        schema_id: The schema ID.
+        yaml_text: The full YAML text of the schema.
+    """
+    _bundled_schemas[schema_id] = yaml_text
+
+
+def get_bundled_schema(schema_id: str) -> str | None:
+    """Get a bundled schema by ID.
+
+    Args:
+        schema_id: The schema ID.
+
+    Returns:
+        Schema YAML text, or None if not bundled.
+    """
+    return _bundled_schemas.get(schema_id)
+
+
+BUNDLED_REGISTRY: dict[str, Any] = {
+    "registry_version": "1.0",
+    "schemas": [],
+}
 
 
 # ---------------------------------------------------------------------------
 # Core fetch function
 # ---------------------------------------------------------------------------
 
+
 def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """
-    Fetch a text file from GitHub raw URL with session caching.
+    Fetch a text file from GitHub raw URL with TTL-aware session caching.
 
     Args:
         path: Relative path within the repo (e.g., "schemas/registry.yaml").
@@ -65,17 +118,22 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """
     url = f"{base_url}/{path}"
 
-    # Check cache first
-    if url in _cache:
+    # Check cache first — only return if still fresh
+    if url in _cache and is_cache_fresh(url):
         return _cache[url]
 
     try:
         import requests
+
         response = requests.get(url, timeout=15)
         response.raise_for_status()
         _cache[url] = response.text
+        _cache_timestamps[url] = time.time()
         return response.text
     except Exception as e:
+        # If fetch fails but we have stale cache, return it
+        if url in _cache:
+            return _cache[url]
         print(f"Fetch failed for {url}: {e}")
         return None
 
@@ -84,9 +142,11 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
 # Registry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RegistryEntry:
     """Single entry from the schema registry."""
+
     id: str
     name: str
     version: str
@@ -112,17 +172,19 @@ def fetch_registry(base_url: str = DEFAULT_GITHUB_BASE) -> list[RegistryEntry]:
     raw = yaml.safe_load(text)
     entries = []
     for s in raw.get("schemas", []):
-        entries.append(RegistryEntry(
-            id=s["id"],
-            name=s["name"],
-            version=s.get("version", "1.0"),
-            schema_file=s["schema_file"],
-            template_file=s.get("template_file", ""),
-            description=s.get("description", ""),
-            category=s.get("category", ""),
-            tags=s.get("tags", []),
-            source="github",
-        ))
+        entries.append(
+            RegistryEntry(
+                id=s["id"],
+                name=s["name"],
+                version=s.get("version", "1.0"),
+                schema_file=s["schema_file"],
+                template_file=s.get("template_file", ""),
+                description=s.get("description", ""),
+                category=s.get("category", ""),
+                tags=s.get("tags", []),
+                source="github",
+            )
+        )
     return entries
 
 
@@ -130,16 +192,13 @@ def fetch_registry(base_url: str = DEFAULT_GITHUB_BASE) -> list[RegistryEntry]:
 # Schema fetching
 # ---------------------------------------------------------------------------
 
-def fetch_schema_yaml(
-    schema_file: str, base_url: str = DEFAULT_GITHUB_BASE
-) -> str | None:
+
+def fetch_schema_yaml(schema_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """Fetch a schema YAML file from GitHub."""
     return fetch_text(f"{SCHEMAS_DIR}/{schema_file}", base_url)
 
 
-def fetch_schema(
-    schema_file: str, base_url: str = DEFAULT_GITHUB_BASE
-) -> Any:
+def fetch_schema(schema_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> Any:
     """Fetch and parse a schema YAML file. Returns raw dict."""
     text = fetch_schema_yaml(schema_file, base_url)
     if text is None:
@@ -151,9 +210,8 @@ def fetch_schema(
 # Template fetching
 # ---------------------------------------------------------------------------
 
-def fetch_template_source(
-    template_file: str, base_url: str = DEFAULT_GITHUB_BASE
-) -> str | None:
+
+def fetch_template_source(template_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """Fetch a template Python module as source text."""
     return fetch_text(f"{TEMPLATES_DIR}/{template_file}", base_url)
 
@@ -297,6 +355,7 @@ def get_local_template_source(schema_id: str) -> str | None:
 # Unified schema resolution
 # ---------------------------------------------------------------------------
 
+
 def resolve_all_schemas(
     base_url: str = DEFAULT_GITHUB_BASE,
 ) -> list[RegistryEntry]:
@@ -328,7 +387,9 @@ def resolve_schema_yaml(
     base_url: str = DEFAULT_GITHUB_BASE,
 ) -> str | None:
     """
-    Resolve and fetch schema YAML by ID, checking local then GitHub.
+    Resolve and fetch schema YAML by ID.
+
+    Resolution order: local -> cache -> GitHub -> bundled fallback.
 
     Args:
         schema_id: The schema ID to look up.
@@ -338,17 +399,24 @@ def resolve_schema_yaml(
     Returns:
         Schema YAML text, or None if not found.
     """
-    # Check local first
+    # 1. Check local first
     local_yaml = get_local_schema_yaml(schema_id)
     if local_yaml is not None:
         return local_yaml
 
-    # Find in registry
+    # 2-3. Find in registry (cache + GitHub handled by fetch_text)
     if registry is None:
         registry = resolve_all_schemas(base_url)
     for entry in registry:
         if entry.id == schema_id:
-            return fetch_schema_yaml(entry.schema_file, base_url)
+            result = fetch_schema_yaml(entry.schema_file, base_url)
+            if result is not None:
+                return result
+
+    # 4. Bundled fallback
+    bundled = get_bundled_schema(schema_id)
+    if bundled is not None:
+        return bundled
 
     return None
 
