@@ -1,14 +1,24 @@
 """Tests for engine/github_loader.py."""
 from __future__ import annotations
 
+from unittest import mock
+
 from engine.github_loader import (
+    CACHE_TTL,
     RegistryEntry,
+    _bundled_schemas,
+    _cache,
+    _cache_timestamps,
+    _local_schema_yaml,
+    _local_schemas,
+    _local_template_source,
+    clear_cache,
+    get_bundled_schema,
     get_local_schema_yaml,
+    is_cache_fresh,
+    register_bundled_schema,
     register_local_schema,
     resolve_schema_yaml,
-    _local_schemas,
-    _local_schema_yaml,
-    _local_template_source,
 )
 
 
@@ -87,3 +97,54 @@ def test_missing_id() -> None:
     _clear_local_state()
     result = register_local_schema("schema:\n  name: 'No ID'\n")
     assert result is None
+
+
+def test_bundled_fallback() -> None:
+    """Bundled schema is returned when local and GitHub are unavailable."""
+    _clear_local_state()
+    _bundled_schemas.clear()
+    clear_cache()
+
+    bundled_yaml = """\
+schema:
+  id: bundled_test
+  name: "Bundled Test Schema"
+  version: "1.0"
+  template: ""
+core_fields:
+  - group: "Info"
+    fields:
+      - key: name
+        label: "Name"
+        type: text
+        required: true
+"""
+    register_bundled_schema("bundled_test", bundled_yaml)
+
+    # Resolve should find bundled when no local or GitHub match
+    result = resolve_schema_yaml("bundled_test", registry=[])
+    assert result is not None
+    assert "Bundled Test Schema" in result
+
+    _bundled_schemas.clear()
+
+
+def test_cache_ttl() -> None:
+    """Stale cache is detected by is_cache_fresh."""
+    url = "https://example.com/test.yaml"
+    _cache[url] = "cached content"
+    _cache_timestamps[url] = 1000.0
+
+    # With current time far in future, cache is stale
+    with mock.patch("engine.github_loader.time") as mock_time:
+        mock_time.time.return_value = 1000.0 + CACHE_TTL + 1
+        assert is_cache_fresh(url) is False
+
+    # With current time close, cache is fresh
+    with mock.patch("engine.github_loader.time") as mock_time:
+        mock_time.time.return_value = 1000.0 + 10
+        assert is_cache_fresh(url) is True
+
+    # Clean up
+    _cache.pop(url, None)
+    _cache_timestamps.pop(url, None)

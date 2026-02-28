@@ -12,6 +12,7 @@ All fetching uses `requests`, which works in Pyodide.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from typing import Any
@@ -32,17 +33,71 @@ SCHEMAS_DIR = "schemas"
 TEMPLATES_DIR = "templates"
 ENGINE_DIR = "engine"
 
+# Cache TTL in seconds (5 minutes)
+CACHE_TTL = 300
+
 
 # ---------------------------------------------------------------------------
-# Session cache
+# Session cache with TTL
 # ---------------------------------------------------------------------------
 
 _cache: dict[str, str] = {}
+_cache_timestamps: dict[str, float] = {}
 
 
-def clear_cache():
+def clear_cache() -> None:
     """Clear the session cache (e.g., after changing GitHub URL)."""
     _cache.clear()
+    _cache_timestamps.clear()
+
+
+def is_cache_fresh(url: str) -> bool:
+    """Check if a cached item is still within its TTL.
+
+    Args:
+        url: The URL to check.
+
+    Returns:
+        True if the cached item exists and is within TTL.
+    """
+    if url not in _cache_timestamps:
+        return False
+    return (time.time() - _cache_timestamps[url]) < CACHE_TTL
+
+
+# ---------------------------------------------------------------------------
+# Bundled schemas (for offline fallback)
+# ---------------------------------------------------------------------------
+
+_bundled_schemas: dict[str, str] = {}
+
+
+def register_bundled_schema(schema_id: str, yaml_text: str) -> None:
+    """Preload a schema YAML for offline fallback.
+
+    Args:
+        schema_id: The schema ID.
+        yaml_text: The full YAML text of the schema.
+    """
+    _bundled_schemas[schema_id] = yaml_text
+
+
+def get_bundled_schema(schema_id: str) -> str | None:
+    """Get a bundled schema by ID.
+
+    Args:
+        schema_id: The schema ID.
+
+    Returns:
+        Schema YAML text, or None if not bundled.
+    """
+    return _bundled_schemas.get(schema_id)
+
+
+BUNDLED_REGISTRY: dict[str, Any] = {
+    "registry_version": "1.0",
+    "schemas": [],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +107,7 @@ def clear_cache():
 
 def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """
-    Fetch a text file from GitHub raw URL with session caching.
+    Fetch a text file from GitHub raw URL with TTL-aware session caching.
 
     Args:
         path: Relative path within the repo (e.g., "schemas/registry.yaml").
@@ -63,8 +118,8 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """
     url = f"{base_url}/{path}"
 
-    # Check cache first
-    if url in _cache:
+    # Check cache first — only return if still fresh
+    if url in _cache and is_cache_fresh(url):
         return _cache[url]
 
     try:
@@ -73,8 +128,12 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
         _cache[url] = response.text
+        _cache_timestamps[url] = time.time()
         return response.text
     except Exception as e:
+        # If fetch fails but we have stale cache, return it
+        if url in _cache:
+            return _cache[url]
         print(f"Fetch failed for {url}: {e}")
         return None
 
@@ -328,7 +387,9 @@ def resolve_schema_yaml(
     base_url: str = DEFAULT_GITHUB_BASE,
 ) -> str | None:
     """
-    Resolve and fetch schema YAML by ID, checking local then GitHub.
+    Resolve and fetch schema YAML by ID.
+
+    Resolution order: local -> cache -> GitHub -> bundled fallback.
 
     Args:
         schema_id: The schema ID to look up.
@@ -338,17 +399,24 @@ def resolve_schema_yaml(
     Returns:
         Schema YAML text, or None if not found.
     """
-    # Check local first
+    # 1. Check local first
     local_yaml = get_local_schema_yaml(schema_id)
     if local_yaml is not None:
         return local_yaml
 
-    # Find in registry
+    # 2-3. Find in registry (cache + GitHub handled by fetch_text)
     if registry is None:
         registry = resolve_all_schemas(base_url)
     for entry in registry:
         if entry.id == schema_id:
-            return fetch_schema_yaml(entry.schema_file, base_url)
+            result = fetch_schema_yaml(entry.schema_file, base_url)
+            if result is not None:
+                return result
+
+    # 4. Bundled fallback
+    bundled = get_bundled_schema(schema_id)
+    if bundled is not None:
+        return bundled
 
     return None
 
