@@ -1,16 +1,3 @@
-# FULL BUILD PROMPT — docx_builder
-# ==================================
-# Current state: Engine modules exist but no tests, no templates,
-# no pyproject.toml, no README. Phases 3-7+ not started.
-#
-# Usage:
-#   cd docx_builder
-#   claude
-#   [paste this prompt]
-#
-# This prompt completes all remaining setup AND builds phases 2b–7.
-
-
 You are completing the build of **docx_builder** — an open-source, template-driven document generator for the electric utility industry. Excel (xlwings Lite / Pyodide) handles data entry, Python generates Word .docx files. Everything runs in-browser via WebAssembly — zero Python install.
 
 ## What already exists in the repo
