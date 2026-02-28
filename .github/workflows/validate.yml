@@ -1,0 +1,53 @@
+name: Validate Schemas & Engine
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml ruff pyright
+
+      - name: Lint
+        run: ruff check engine/
+
+      - name: Type check
+        run: pyright engine/
+        continue-on-error: true
+
+      - name: Load all schemas
+        run: |
+          PYTHONPATH=. python -c "
+          from engine.schema_loader import load_schema
+          from pathlib import Path
+          for p in sorted(Path('schemas').glob('*.yaml')):
+              if p.name == 'registry.yaml': continue
+              s = load_schema(p)
+              print(f'✅ {s.id}: {s.name} ({len(s.all_fields)} fields)')
+          "
+
+      - name: Validate registry
+        run: |
+          PYTHONPATH=. python -c "
+          import yaml
+          with open('schemas/registry.yaml') as f:
+              reg = yaml.safe_load(f)
+          for entry in reg['schemas']:
+              assert 'id' in entry, f'Missing id in registry entry'
+              assert 'schema_file' in entry, f'Missing schema_file for {entry[\"id\"]}'
+              print(f'✅ {entry[\"id\"]}: {entry[\"name\"]}')
+          "
+
+      - name: Run tests
+        run: PYTHONPATH=. python -m pytest tests/ -v
+        if: hashFiles('tests/') != ''

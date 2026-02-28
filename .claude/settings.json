@@ -1,0 +1,80 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '📋 Current plan:' && head -50 docs/PLAN.md 2>/dev/null || echo 'No plan yet.' && echo '' && echo '📝 Recent dev log:' && tail -30 docs/DEVLOG.md 2>/dev/null || echo 'No log yet.' && echo '' && echo '🔀 Git status:' && git status --short && echo '' && echo '📌 Open issues:' && gh issue list --limit 5 2>/dev/null || echo 'gh CLI not configured'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Reminder: Use conventional commit format (feat:/fix:/docs:/refactor:/test:) and reference the GH issue number.'",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Edit:*.py|Write:*.py",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Reminder: Ensure type hints, docstrings, and Pyodide compatibility.'",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit:*.py|Write:*.py",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ruff check --quiet $(echo $CLAUDE_TOOL_INPUT | jq -r '.file_path // empty') 2>/dev/null || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(python*)",
+      "Bash(ruff*)",
+      "Bash(pyright*)",
+      "Bash(pytest*)",
+      "Bash(git*)",
+      "Bash(gh issue*)",
+      "Bash(gh pr*)",
+      "Bash(cat*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(wc*)",
+      "Bash(ls*)",
+      "Bash(find*)",
+      "Bash(echo*)",
+      "Bash(mkdir*)",
+      "Bash(cp*)",
+      "Bash(mv*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)*",
+      "Bash(sudo*)"
+    ]
+  }
+}
