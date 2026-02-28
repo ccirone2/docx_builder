@@ -34,3 +34,26 @@ host (GitHub raw URLs work). Offline needs cache/fallback.
 **Decision:** `redact: true` property on fields and table columns.
 **Consequences:** LLM prompts show field structure without sensitive values.
 Import recognizes [REDACTED] and converts to None (no data overwrite).
+
+## ADR-006: Two-Layer Excel Builder
+**Date:** 2026-02-28
+**Context:** Need to unit test Excel sheet generation without xlwings.
+**Decision:** Separate pure logic layer (CellInstruction dataclasses) from
+xlwings adapter layer (build_sheets/apply_cell).
+**Consequences:** Logic layer is fully testable. Adapter layer is thin
+and only runs in xlwings Lite runtime.
+
+## ADR-007: Programmatic Document Generation (v1)
+**Date:** 2026-02-28
+**Context:** Need to generate Word documents from schema data.
+**Decision:** Use python-docx programmatically rather than template files.
+**Consequences:** More code but full control over output. No template
+.docx files to manage. Future v2 can use docxtpl for hosted templates.
+
+## ADR-008: TTL Cache with Stale Fallback
+**Date:** 2026-02-28
+**Context:** Need to balance freshness with performance and offline support.
+**Decision:** 5-minute TTL on cached GitHub fetches, stale cache returned
+on network failure, plus bundled schemas as last resort.
+**Consequences:** Users get fresh schemas within 5 minutes. Network failures
+degrade gracefully to cached or bundled content.

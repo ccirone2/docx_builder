@@ -1,8 +1,8 @@
 # Development Plan
 
-## Current Phase: Phase A — Complete Build (all phases)
+## Current Phase: Complete — All Core Phases Done
 
-### Status: 🟡 In Progress
+### Status: ✅ Complete
 
 ### Completed Phases
 
@@ -12,23 +12,24 @@
 | 1b | Data exchange | ✅ Done | YAML import/export, LLM prompts, redaction |
 | 2a | GitHub loader | ✅ Done | Core fetch, local registration, resolution |
 | 2a | Registry | ✅ Done | Master schema index |
+| A | Project setup | ✅ Done | pyproject.toml, docs, CI, tests |
+| B | GitHub loader completion | ✅ Done | TTL caching, bundled fallback |
+| C | Excel builder | ✅ Done | Schema-driven sheet generation |
+| D | Document builder | ✅ Done | python-docx RFQ generation |
+| E | Browser download bridge | ✅ Done | generate_and_download pipeline |
+| F | Workbook bootstrap | ✅ Done | xlwings Lite scripts |
+| G | Local customization & validation | ✅ Done | Custom schemas, validation UX |
+| H | Finalization | ✅ Done | 56 tests, lint clean, docs updated |
 
-### Active Build Phases
+### Test Summary
 
-| Phase | Task | Status | Notes |
-|-------|------|--------|-------|
-| A | Project setup — pyproject.toml, docs, CI, tests | 🟡 In Progress | |
-| B | GitHub loader — TTL caching, bundled fallback | 🔲 Planned | |
-| C | Excel builder — schema-driven sheet generation | 🔲 Planned | |
-| D | Document builder — python-docx RFQ generation | 🔲 Planned | |
-| E | Browser download bridge — generate-and-download | 🔲 Planned | |
-| F | Workbook bootstrap — xlwings Lite scripts | 🔲 Planned | |
-| G | Local customization & validation UX | 🔲 Planned | |
-| H | Finalization — full test pass, docs, issues | 🔲 Planned | |
+- 56 tests across 7 test files
+- All passing, lint clean
+- Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux
 
 ### Backlog
 
-- [ ] Phase 9: Contribution tooling — schema/template validation CLI
-- [ ] Phase 10: Template system v2 — docxtpl hosted templates
 - [ ] More schemas: Change Order, Bid Tabulation, Safety Plan
-- [ ] Workbook distribution — pre-built .xlsx with embedded scripts
+- [ ] Template system v2: docxtpl hosted templates
+- [ ] Contribution tooling: schema/template validation CLI
+- [ ] Workbook distribution: pre-built .xlsx with embedded scripts
