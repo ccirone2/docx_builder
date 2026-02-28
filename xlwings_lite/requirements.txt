@@ -1,0 +1,11 @@
+# xlwings Lite requirements
+# Paste this into the requirements.txt tab in the xlwings Lite add-in
+#
+# Notes:
+# - pyyaml and lxml are built into Pyodide, don't pin versions
+# - python-docx and docxtpl are pure Python, safe to pin
+# - xlwings version is managed by the add-in itself
+
+python-docx
+docxtpl
+pyyaml

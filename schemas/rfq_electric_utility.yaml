@@ -1,0 +1,408 @@
+# =============================================================================
+# Schema: RFQ for Electric Utility Contractor Services
+# =============================================================================
+# This schema defines the data structure for a Request for Quotation document
+# used to solicit bids from contractors in the electric utility industry.
+#
+# Field types: text, multiline, date, number, currency, choice, boolean, table
+# Field property: redact — if true, value is masked when exporting with redaction
+#   enabled, protecting sensitive data from being shared with LLMs or externally.
+# =============================================================================
+
+schema:
+  id: rfq_electric_utility
+  name: "Request for Quotation - Electric Utility Services"
+  version: "1.0"
+  template: "rfq_electric_utility_template.docx"
+  description: >
+    Standard RFQ for soliciting bids from contractors for electric utility
+    construction, maintenance, and engineering services.
+
+# -----------------------------------------------------------------------------
+# CORE FIELDS — Always present, required unless marked otherwise
+# These map directly to the document template placeholders.
+# -----------------------------------------------------------------------------
+core_fields:
+
+  # --- Issuer Information ---
+  - group: "Issuing Organization"
+    fields:
+      - key: issuer_name
+        label: "Organization Name"
+        type: text
+        required: true
+        redact: true
+        placeholder: "e.g., Midwest Electric Cooperative"
+
+      - key: issuer_address
+        label: "Address"
+        type: multiline
+        required: true
+        redact: true
+        placeholder: "Street, City, State ZIP"
+
+      - key: issuer_contact_name
+        label: "Contact Person"
+        type: text
+        required: true
+        redact: true
+
+      - key: issuer_contact_title
+        label: "Contact Title"
+        type: text
+        required: false
+        redact: true
+
+      - key: issuer_contact_email
+        label: "Contact Email"
+        type: text
+        required: true
+        redact: true
+        validation:
+          pattern: "^[\\w.-]+@[\\w.-]+\\.\\w+$"
+
+      - key: issuer_contact_phone
+        label: "Contact Phone"
+        type: text
+        required: true
+        redact: true
+
+  # --- RFQ Identification ---
+  - group: "RFQ Details"
+    fields:
+      - key: rfq_number
+        label: "RFQ Number"
+        type: text
+        required: true
+        placeholder: "e.g., RFQ-2026-001"
+
+      - key: rfq_title
+        label: "RFQ Title"
+        type: text
+        required: true
+        placeholder: "e.g., Distribution Line Reconstruction - Phase 3"
+
+      - key: rfq_issue_date
+        label: "Issue Date"
+        type: date
+        required: true
+
+      - key: rfq_due_date
+        label: "Response Due Date"
+        type: date
+        required: true
+
+      - key: rfq_due_time
+        label: "Response Due Time"
+        type: text
+        required: true
+        default: "2:00 PM CST"
+
+  # --- Project Overview ---
+  - group: "Project Information"
+    fields:
+      - key: project_description
+        label: "Project Description"
+        type: multiline
+        required: true
+        placeholder: "Detailed description of the work to be performed..."
+
+      - key: project_location
+        label: "Project Location"
+        type: text
+        required: true
+        placeholder: "e.g., Service territory - Greene County, MO"
+
+      - key: work_category
+        label: "Work Category"
+        type: choice
+        required: true
+        choices:
+          - "Distribution Line Construction"
+          - "Distribution Line Maintenance"
+          - "Transmission Line Construction"
+          - "Transmission Line Maintenance"
+          - "Substation Construction"
+          - "Substation Maintenance"
+          - "Underground Cable Installation"
+          - "Vegetation Management"
+          - "Storm Restoration"
+          - "Engineering & Design"
+          - "Other"
+
+      - key: estimated_duration
+        label: "Estimated Project Duration"
+        type: text
+        required: true
+        placeholder: "e.g., 90 calendar days"
+
+      - key: estimated_start_date
+        label: "Estimated Start Date"
+        type: date
+        required: false
+
+  # --- Scope of Work ---
+  - group: "Scope of Work"
+    fields:
+      - key: scope_summary
+        label: "Scope Summary"
+        type: multiline
+        required: true
+        placeholder: "High-level summary of work scope..."
+
+      - key: work_items
+        label: "Work Items / Line Items"
+        type: table
+        required: true
+        columns:
+          - key: item_number
+            label: "Item #"
+            type: text
+          - key: description
+            label: "Description"
+            type: text
+          - key: quantity
+            label: "Qty"
+            type: number
+          - key: unit
+            label: "Unit"
+            type: text
+          - key: unit_price
+            label: "Unit Price ($)"
+            type: currency
+            redact: true
+          - key: extended_price
+            label: "Extended Price ($)"
+            type: currency
+            formula: "=quantity*unit_price"
+            redact: true
+
+      - key: specifications
+        label: "Technical Specifications & Standards"
+        type: multiline
+        required: true
+        placeholder: "e.g., All work shall conform to NESC, RUS, and utility standards..."
+
+  # --- Submission Requirements ---
+  - group: "Submission Requirements"
+    fields:
+      - key: submission_method
+        label: "Submission Method"
+        type: choice
+        required: true
+        choices:
+          - "Email Only"
+          - "Hard Copy Only"
+          - "Email and Hard Copy"
+          - "Online Portal"
+
+      - key: submission_address
+        label: "Submission Address / Email"
+        type: multiline
+        required: true
+        redact: true
+
+      - key: required_documents
+        label: "Required Documents"
+        type: table
+        required: true
+        columns:
+          - key: document_name
+            label: "Document"
+            type: text
+          - key: required
+            label: "Required?"
+            type: boolean
+          - key: notes
+            label: "Notes"
+            type: text
+        default_rows:
+          - document_name: "Completed Bid Form"
+            required: true
+            notes: ""
+          - document_name: "Proof of Insurance (COI)"
+            required: true
+            notes: "Min $1M general liability"
+          - document_name: "Contractor License"
+            required: true
+            notes: "Valid state license"
+          - document_name: "Safety Record (EMR / OSHA Logs)"
+            required: true
+            notes: "3-year history"
+          - document_name: "References (3 minimum)"
+            required: true
+            notes: "Similar utility projects"
+          - document_name: "Equipment List"
+            required: false
+            notes: ""
+
+  # --- Terms & Conditions ---
+  - group: "Terms & Conditions"
+    fields:
+      - key: payment_terms
+        label: "Payment Terms"
+        type: text
+        required: true
+        default: "Net 30 from approved invoice"
+
+      - key: insurance_requirements
+        label: "Insurance Requirements"
+        type: multiline
+        required: true
+        default: |
+          General Liability: $1,000,000 per occurrence / $2,000,000 aggregate
+          Auto Liability: $1,000,000 combined single limit
+          Workers Compensation: Statutory limits
+          Umbrella/Excess: $5,000,000
+
+      - key: prevailing_wage
+        label: "Prevailing Wage Applies?"
+        type: boolean
+        required: true
+        default: false
+
+      - key: bonding_required
+        label: "Performance Bond Required?"
+        type: boolean
+        required: true
+        default: false
+
+      - key: bonding_amount
+        label: "Bond Amount"
+        type: text
+        required: false
+        conditional_on:
+          field: bonding_required
+          value: true
+        placeholder: "e.g., 100% of contract value"
+
+# -----------------------------------------------------------------------------
+# OPTIONAL FIELDS — Schema-defined but not required
+# Shown in Excel with a separate "Optional" indicator
+# -----------------------------------------------------------------------------
+optional_fields:
+
+  - group: "Pre-Bid Conference"
+    fields:
+      - key: prebid_conference
+        label: "Pre-Bid Conference?"
+        type: boolean
+        default: false
+
+      - key: prebid_mandatory
+        label: "Mandatory Attendance?"
+        type: boolean
+        default: false
+        conditional_on:
+          field: prebid_conference
+          value: true
+
+      - key: prebid_date
+        label: "Conference Date/Time"
+        type: text
+        conditional_on:
+          field: prebid_conference
+          value: true
+
+      - key: prebid_location
+        label: "Conference Location"
+        type: text
+        conditional_on:
+          field: prebid_conference
+          value: true
+
+  - group: "Evaluation Criteria"
+    fields:
+      - key: evaluation_criteria
+        label: "Evaluation Criteria"
+        type: table
+        columns:
+          - key: criterion
+            label: "Criterion"
+            type: text
+          - key: weight
+            label: "Weight (%)"
+            type: number
+        default_rows:
+          - criterion: "Price"
+            weight: 40
+          - criterion: "Experience & Qualifications"
+            weight: 25
+          - criterion: "Safety Record"
+            weight: 20
+          - criterion: "Schedule / Availability"
+            weight: 15
+
+  - group: "Additional Provisions"
+    fields:
+      - key: liquidated_damages
+        label: "Liquidated Damages"
+        type: text
+        placeholder: "e.g., $500/day beyond completion date"
+
+      - key: retainage
+        label: "Retainage"
+        type: text
+        placeholder: "e.g., 10% until final acceptance"
+
+      - key: safety_requirements
+        label: "Additional Safety Requirements"
+        type: compound
+        fields:
+          - key: general
+            label: "General Safety Requirements"
+            type: multiline
+            placeholder: "e.g., OSHA 10-hr required for all crew, daily toolbox talks..."
+
+          - key: hot_work_permits
+            label: "Hot Work Permits"
+            type: multiline
+            placeholder: "e.g., Hot work permit required for welding, cutting, grinding..."
+
+          - key: lockout_tagout
+            label: "Lockout/Tagout (LOTO)"
+            type: multiline
+            placeholder: "e.g., LOTO procedures per OSHA 1910.147, utility-specific procedures..."
+
+          - key: confined_space
+            label: "Confined Space Entry"
+            type: multiline
+            placeholder: "e.g., Permit-required confined space per OSHA 1910.146..."
+
+          - key: ppe
+            label: "PPE Requirements"
+            type: multiline
+            placeholder: "e.g., FR clothing, hard hats, safety glasses, rubber gloves..."
+
+          - key: training_certifications
+            label: "Required Training & Certifications"
+            type: multiline
+            placeholder: "e.g., OSHA 10-hr, First Aid/CPR, pole top rescue, CDL..."
+
+          - key: incident_reporting
+            label: "Incident Reporting"
+            type: multiline
+            placeholder: "e.g., Immediate notification for any recordable, near-miss reporting..."
+
+      - key: environmental_requirements
+        label: "Environmental Requirements"
+        type: multiline
+
+# -----------------------------------------------------------------------------
+# FLEXIBLE FIELDS — User-defined key-value pairs for anything not in the schema
+# These appear in a freeform section of both the Excel sheet and the document.
+# -----------------------------------------------------------------------------
+flexible_fields:
+  enabled: true
+  max_entries: 20
+  label: "Additional Information"
+  description: >
+    Use this section to add any project-specific information not covered
+    by the fields above. Each entry needs a label and value.
+  columns:
+    - key: field_label
+      label: "Field Name"
+      type: text
+    - key: field_value
+      label: "Value"
+      type: multiline

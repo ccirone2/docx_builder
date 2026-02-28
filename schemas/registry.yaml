@@ -1,0 +1,28 @@
+# =============================================================================
+# Schema Registry — Master index of all available document schemas
+# =============================================================================
+# This file is fetched by the workbook at startup to discover which document
+# types are available. Each entry maps a schema ID to its YAML file and
+# document template module.
+#
+# To add a new schema, append an entry here and add the corresponding
+# .yaml and .py files to the schemas/ and templates/ directories.
+# =============================================================================
+
+registry_version: "1.0"
+
+schemas:
+  - id: rfq_electric_utility
+    name: "RFQ - Electric Utility Services"
+    version: "1.0"
+    schema_file: "rfq_electric_utility.yaml"
+    template_file: "rfq_electric_utility.py"
+    description: >
+      Request for Quotation for soliciting bids from contractors
+      for electric utility construction, maintenance, and engineering services.
+    category: "Procurement"
+    tags:
+      - rfq
+      - electric
+      - utility
+      - contractor
