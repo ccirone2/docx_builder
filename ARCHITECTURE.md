@@ -246,7 +246,7 @@ main repo. When ready, they submit a PR.
 
 ```
 Control Sheet:
-  GitHub URL: https://raw.githubusercontent.com/YOURFORK/docgen/main/
+  GitHub URL: https://raw.githubusercontent.com/YOURFORK/docx_builder/main/
 ```
 
 ### Mechanism D: Local Development Server (Advanced)
@@ -301,7 +301,7 @@ The `github_loader.py` module handles fetching and caching from GitHub:
 
 import requests  # works in Pyodide
 
-GITHUB_BASE = "https://raw.githubusercontent.com/OWNER/docgen/main"
+GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
 
 _cache = {}  # in-memory cache for the session
 
@@ -413,7 +413,7 @@ from xlwings import script
 import requests
 import yaml
 
-GITHUB_BASE = "https://raw.githubusercontent.com/OWNER/docgen/main"
+GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
 
 
 def _fetch(path):
@@ -488,7 +488,7 @@ Control Sheet Layout:
 │  CONFIGURATION        │                 │                │
 │                       │                 │                │
 │  GitHub Repo URL:     │  https://raw.githubusercontent   │
-│                       │  .com/OWNER/docgen/main          │
+│                       │  .com/ccirone2/docx_builder/main          │
 │                       │                 │                │
 │  Custom Schemas:      │  (use file picker or paste YAML) │
 │                       │                 │                │
