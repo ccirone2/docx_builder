@@ -26,7 +26,7 @@ import yaml
 # Default GitHub base URL. Users can override this on the Control sheet
 # to point at their fork or a different branch.
 DEFAULT_GITHUB_BASE = (
-    "https://raw.githubusercontent.com/OWNER/docgen/main"
+    "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
 )
 
 # Paths within the repo
