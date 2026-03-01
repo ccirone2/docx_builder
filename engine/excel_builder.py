@@ -495,8 +495,27 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
 # ---------------------------------------------------------------------------
 
 
+def _col_letter(col: int) -> str:
+    """Convert a 1-based column number to Excel letter(s).
+
+    Args:
+        col: 1-based column index (1='A', 26='Z', 27='AA').
+
+    Returns:
+        Column letter string.
+    """
+    result = ""
+    while col > 0:
+        col, remainder = divmod(col - 1, 26)
+        result = chr(65 + remainder) + result
+    return result
+
+
 def build_sheets(book: Any, plan: SheetPlan) -> None:
     """Create sheets and write all cell instructions to an xlwings Book.
+
+    Each cell write is individually guarded so that one failure does
+    not prevent the remaining cells from being written.
 
     Args:
         book: An xlwings Book object.
@@ -507,16 +526,21 @@ def build_sheets(book: Any, plan: SheetPlan) -> None:
             book.sheets.add(sheet_name)
 
     for instr in plan.instructions:
-        sheet = book.sheets[instr.sheet]
-        apply_cell(sheet, instr)
+        try:
+            sheet = book.sheets[instr.sheet]
+            apply_cell(sheet, instr)
+        except Exception:
+            pass
 
 
 def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     """Write a single cell to an xlwings Sheet with formatting.
 
-    Formatting operations are best-effort — xlwings Lite does not
-    implement merge, font.bold, .color, row_height, or note.text,
-    so each is wrapped in a try/except to avoid aborting the build.
+    Formatting operations are best-effort — xlwings Lite may not
+    support merge, font.bold, .color, row_height, or note.text.
+    Each is wrapped in a broad ``except Exception`` to handle
+    both desktop xlwings errors and xlwings Lite / Office.js errors
+    (e.g. InvalidArgument) that use non-standard exception types.
 
     Args:
         sheet: An xlwings Sheet object.
@@ -525,48 +549,48 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     cell = sheet.range((instr.row, instr.col))
     cell.value = instr.value
 
+    # Merge — use A1-notation strings (two-tuple range syntax is
+    # not reliably supported in xlwings Lite / Office.js).
     try:
         if instr.merge_cols > 1:
-            merge_range = sheet.range(
-                (instr.row, instr.col),
-                (instr.row, instr.col + instr.merge_cols - 1),
-            )
-            merge_range.merge()
-    except (NotImplementedError, AttributeError):
+            start = f"{_col_letter(instr.col)}{instr.row}"
+            end = f"{_col_letter(instr.col + instr.merge_cols - 1)}{instr.row}"
+            sheet.range(f"{start}:{end}").merge()
+    except Exception:
         pass
 
     try:
         if instr.bold:
             cell.font.bold = True
-    except (NotImplementedError, AttributeError):
+    except Exception:
         pass
 
     try:
         if instr.bg_color:
             cell.color = instr.bg_color
-    except (NotImplementedError, AttributeError):
+    except Exception:
         pass
 
     try:
         if instr.font_color:
             cell.font.color = instr.font_color
-    except (NotImplementedError, AttributeError):
+    except Exception:
         pass
 
     try:
         if instr.number_format:
             cell.number_format = instr.number_format
-    except (NotImplementedError, AttributeError):
+    except Exception:
         pass
 
     try:
         if instr.row_height:
             cell.row_height = instr.row_height
-    except (NotImplementedError, AttributeError):
+    except Exception:
         pass
 
     try:
         if instr.note:
             cell.note.text = instr.note
-    except (NotImplementedError, AttributeError):
+    except Exception:
         pass
