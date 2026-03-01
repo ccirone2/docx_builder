@@ -26,11 +26,31 @@ _STATUS_CELL = "D3"
 # --- Bootstrap helpers ---
 
 
-def _fetch_text(url: str) -> str:
+def _fetch_text(url):
     """Fetch a URL as text (Pyodide-compatible)."""
     from pyodide.http import open_url  # type: ignore[import-untyped]
 
     return open_url(url).read()
+
+
+def _resolve_base(book):
+    """Read custom GitHub URL from Control!D12 if available."""
+    global GITHUB_BASE  # noqa: PLW0603
+    try:
+        url = book.sheets["Control"]["D12"].value
+        if url and str(url).strip().startswith("http"):
+            new_base = str(url).strip().rstrip("/")
+            if new_base != GITHUB_BASE:
+                GITHUB_BASE = new_base
+                _invalidate_runner()
+    except Exception:
+        pass
+
+
+def _invalidate_runner():
+    """Clear the cached runner so the next call re-fetches it."""
+    global _runner_mod  # noqa: PLW0603
+    _runner_mod = None
 
 
 def _get_runner():
@@ -38,15 +58,22 @@ def _get_runner():
     global _runner_mod  # noqa: PLW0603
     if _runner_mod is not None:
         return _runner_mod
-    url = f"{GITHUB_BASE}/workbook/runner.py"
+    url = GITHUB_BASE + "/workbook/runner.py"
     code = _fetch_text(url)
+    # Guard against 404 pages or non-Python responses
+    if "def init_workbook" not in code:
+        raise RuntimeError(
+            "Could not load runner from: " + url + " — "
+            "check that the GitHub URL (Control!D12) points "
+            "to a valid repo and branch"
+        )
     mod = types.ModuleType("docx_runner")
     exec(code, mod.__dict__)  # noqa: S102
     _runner_mod = mod
     return mod
 
 
-def _show_error(book, exc: Exception) -> None:
+def _show_error(book, exc):
     """Display an error on the Control sheet (creating it if needed)."""
     try:
         names = [s.name for s in book.sheets]
@@ -56,19 +83,20 @@ def _show_error(book, exc: Exception) -> None:
             c["A1"].value = "DOCUMENT GENERATOR"
             c["A1"].font.bold = True
         book.sheets["Control"][_STATUS_CELL].value = (
-            f"Error [{type(exc).__name__}]: {exc}"
+            "Error [" + type(exc).__name__ + "]: " + str(exc)
         )
     except Exception:
         pass
 
 
-def _call(book, func_name: str) -> None:
+def _call(book, func_name):
     """Fetch runner and call func_name(book) with error handling."""
     try:
+        _resolve_base(book)
         runner = _get_runner()
         fn = getattr(runner, func_name, None)
         if fn is None:
-            raise AttributeError(f"Runner has no function '{func_name}'")
+            raise AttributeError("Runner has no function '" + func_name + "'")
         fn(book)
     except Exception as e:
         _show_error(book, e)
