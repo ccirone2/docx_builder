@@ -19,6 +19,8 @@ from typing import Any
 
 import yaml
 
+from engine import log
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -134,7 +136,7 @@ def fetch_text(path: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
         # If fetch fails but we have stale cache, return it
         if url in _cache:
             return _cache[url]
-        print(f"Fetch failed for {url}: {e}")
+        log.warn(f"Fetch failed for {url}: {e}")
         return None
 
 
@@ -231,12 +233,12 @@ def load_template_builder(template_source: str) -> callable | None:
     try:
         exec(template_source, namespace)
     except Exception as e:
-        print(f"Template execution error: {e}")
+        log.error(f"Template execution error: {e}")
         return None
 
     builder = namespace.get("build_document")
     if builder is None:
-        print("Template module does not define build_document()")
+        log.warn("Template module does not define build_document()")
     return builder
 
 
@@ -269,14 +271,14 @@ def fetch_engine(base_url: str = DEFAULT_GITHUB_BASE) -> dict[str, dict]:
     for name in ENGINE_MODULE_NAMES:
         source = fetch_text(f"{ENGINE_DIR}/{name}.py", base_url)
         if source is None:
-            print(f"Warning: Could not fetch engine/{name}.py")
+            log.warn(f"Could not fetch engine/{name}.py")
             continue
         ns = {"__name__": f"engine.{name}"}
         try:
             exec(source, ns)
             _engine_modules[name] = ns
         except Exception as e:
-            print(f"Error loading engine/{name}.py: {e}")
+            log.error(f"Error loading engine/{name}.py: {e}")
 
     return _engine_modules
 
@@ -312,13 +314,13 @@ def register_local_schema(
     try:
         raw = yaml.safe_load(yaml_text)
     except yaml.YAMLError as e:
-        print(f"Invalid YAML: {e}")
+        log.warn(f"Invalid YAML: {e}")
         return None
 
     meta = raw.get("schema", {})
     schema_id = meta.get("id")
     if not schema_id:
-        print("Schema YAML missing 'schema.id'")
+        log.warn("Schema YAML missing 'schema.id'")
         return None
 
     entry = RegistryEntry(
@@ -449,8 +451,7 @@ def resolve_template_source(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print("=== GitHub Loader Test ===")
-    print()
+    log.info("=== GitHub Loader Test ===")
 
     # Test local schema registration
     sample_yaml = """
@@ -469,18 +470,17 @@ core_fields:
         required: true
 """
     entry = register_local_schema(sample_yaml)
-    print(f"Registered local schema: {entry.id} ({entry.name})")
-    print(f"  source: {entry.source}")
-    print(f"  category: {entry.category}")
+    log.info(f"Registered local schema: {entry.id} ({entry.name})")
+    log.info(f"  source: {entry.source}")
+    log.info(f"  category: {entry.category}")
 
     # Test local retrieval
     retrieved = get_local_schema_yaml("test_custom")
-    print(f"  retrieved YAML: {len(retrieved)} chars")
+    log.info(f"  retrieved YAML: {len(retrieved)} chars")
 
     # Show what resolve_all_schemas would return
     # (GitHub fetch will fail in this test env, but local should work)
-    print()
-    print("Resolving all schemas (local only in test env):")
+    log.info("Resolving all schemas (local only in test env):")
     all_schemas = resolve_all_schemas()
     for s in all_schemas:
-        print(f"  [{s.source}] {s.id}: {s.name}")
+        log.info(f"  [{s.source}] {s.id}: {s.name}")

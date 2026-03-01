@@ -7,6 +7,7 @@ Changes here take effect the next time a user opens their workbook
 (or clicks "Reload Scripts").
 """
 
+import datetime
 import sys
 import types
 from typing import Any
@@ -110,8 +111,20 @@ def _load_module(name: str) -> dict:
 
 
 def _set_status(book: Any, message: str) -> None:
-    """Print a status message to the xlwings task pane output."""
-    print(message)  # noqa: T201
+    """Print a status message to the xlwings task pane output.
+
+    Automatically prefixes with HH:MM:SS timestamp and a log level
+    derived from the message content (ERROR / WARN / INFO).
+    """
+    stamp = datetime.datetime.now().strftime("%H:%M:%S")
+    msg_lower = message.lower()
+    if msg_lower.startswith("error") or "error" in msg_lower:
+        level = "ERROR"
+    elif "warn" in msg_lower or "failed" in msg_lower:
+        level = "WARN "
+    else:
+        level = "INFO "
+    print(f"[{stamp}] {level}  {message}")  # noqa: T201
 
 
 def _get_github_base(book: Any) -> str:

@@ -9,6 +9,7 @@ Setup:
   3. Click "Init Workbook" in the task pane
 """
 
+import datetime
 import types
 
 import xlwings as xw
@@ -74,13 +75,19 @@ def _get_runner():
     return mod
 
 
+def _log(level, message):
+    """Print a timestamped, level-prefixed message."""
+    stamp = datetime.datetime.now().strftime("%H:%M:%S")
+    print(f"[{stamp}] {level:<5}  {message}")  # noqa: T201
+
+
 def _show_error(book, exc):
     """Print an error to the xlwings task pane output."""
     msg = str(exc)
     if not msg:
         import traceback
         msg = traceback.format_exc()
-    print(f"Error [{type(exc).__name__}]: {msg}")  # noqa: T201
+    _log("ERROR", f"[{type(exc).__name__}]: {msg}")
 
 
 def _call(book, func_name):
@@ -163,6 +170,6 @@ def reload_scripts(book: xw.Book) -> None:
     _runner_mod = None
     try:
         _get_runner()
-        print("Scripts reloaded from GitHub")  # noqa: T201
+        _log("INFO", "Scripts reloaded from GitHub")
     except Exception as e:
         _show_error(book, e)
