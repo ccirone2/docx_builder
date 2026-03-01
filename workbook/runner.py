@@ -14,9 +14,21 @@ from typing import Any
 
 import yaml
 
+
+class _PrintHandler(logging.Handler):
+    """Logging handler that uses print() for xlwings Lite compatibility.
+
+    Pyodide intercepts print() to route output to the task pane,
+    but sys.stdout.write() (used by StreamHandler) is not captured.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        print(self.format(record))  # noqa: T201
+
+
 log = logging.getLogger("docx_builder")
 if not log.handlers:
-    _handler = logging.StreamHandler(sys.stdout)
+    _handler = _PrintHandler()
     _handler.setFormatter(logging.Formatter("%(message)s"))
     log.addHandler(_handler)
     log.setLevel(logging.INFO)
@@ -225,23 +237,12 @@ def _fmt(cell, **kwargs):
 
 
 def _autofit_sheets(book: Any) -> None:
-    """Autofit columns on all sheets (best-effort).
+    """Set column widths on all sheets based on cell content.
 
-    Tries sheet.autofit() first. If xlwings Lite doesn't support it,
-    falls back to setting explicit column widths based on content length.
+    sheet.autofit() is unreliable in xlwings Lite (may silently no-op),
+    so we always set explicit widths computed from content length.
     """
     for sheet in book.sheets:
-        try:
-            sheet.autofit("c")
-            continue
-        except (NotImplementedError, AttributeError, Exception):
-            pass
-        try:
-            sheet.autofit()
-            continue
-        except (NotImplementedError, AttributeError, Exception):
-            pass
-        # Fallback: set explicit column widths from cell content
         _set_column_widths(sheet)
 
 
@@ -262,7 +263,7 @@ def _set_column_widths(sheet: Any) -> None:
             # Cap at 60 chars, add a little padding
             width = min(max_len + 2, 60)
             sheet.range((1, col_idx)).column_width = width
-    except (NotImplementedError, AttributeError, Exception):
+    except (NotImplementedError, AttributeError):
         pass
 
 

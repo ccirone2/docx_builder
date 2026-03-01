@@ -10,14 +10,25 @@ Setup:
 """
 
 import logging
-import sys
 import types
 
 import xlwings as xw
 
+
+class _PrintHandler(logging.Handler):
+    """Logging handler that uses print() for xlwings Lite compatibility.
+
+    Pyodide intercepts print() to route output to the task pane,
+    but sys.stdout.write() (used by StreamHandler) is not captured.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        print(self.format(record))  # noqa: T201
+
+
 log = logging.getLogger("docx_builder")
 if not log.handlers:
-    _handler = logging.StreamHandler(sys.stdout)
+    _handler = _PrintHandler()
     _handler.setFormatter(logging.Formatter("%(message)s"))
     log.addHandler(_handler)
     log.setLevel(logging.INFO)
@@ -97,6 +108,9 @@ def _call(book, func_name):
     try:
         _resolve_base(book)
         runner = _get_runner()
+        # Propagate the loader's GITHUB_BASE so the runner uses
+        # the same repo/branch the user configured in the loader.
+        runner.GITHUB_BASE = GITHUB_BASE
         fn = getattr(runner, func_name, None)
         if fn is None:
             raise AttributeError("Runner has no function '" + func_name + "'")
