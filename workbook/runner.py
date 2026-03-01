@@ -30,14 +30,15 @@ YAML_STAGING_CELL = "D20"
 
 # Module dependency graph (engine modules only)
 _MODULE_DEPS: dict[str, list[str]] = {
+    "log": [],
     "config": [],
-    "schema_loader": [],
+    "schema_loader": ["log"],
     "excel_builder": ["config", "schema_loader"],
-    "data_exchange": ["schema_loader"],
-    "doc_generator": ["schema_loader"],
+    "data_exchange": ["log", "schema_loader"],
+    "doc_generator": ["log", "schema_loader"],
     "validation_ux": ["schema_loader"],
-    "file_bridge": [],
-    "github_loader": [],
+    "file_bridge": ["log"],
+    "github_loader": ["log"],
 }
 
 # Formatting constants (duplicated from engine/config.py so
@@ -293,11 +294,11 @@ def init_workbook(book: Any) -> None:
 
         _set_status(book, f"Step 2/5: Found {len(schema_names)} schemas")
         control = book.sheets["Control"]
-        if schema_names:
-            control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
+        selected = schema_names[0] if schema_names else None
+        if selected:
+            control[SCHEMA_DROPDOWN_CELL].value = selected
 
         # Build data entry sheets for the first available schema
-        selected = _read_selected_schema(book)
         if selected:
             entry = _find_schema_entry(registry, selected)
             if entry:
