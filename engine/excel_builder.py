@@ -514,6 +514,10 @@ def build_sheets(book: Any, plan: SheetPlan) -> None:
 def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     """Write a single cell to an xlwings Sheet with formatting.
 
+    Formatting operations are best-effort — xlwings Lite does not
+    implement merge, font.bold, .color, row_height, or note.text,
+    so each is wrapped in a try/except to avoid aborting the build.
+
     Args:
         sheet: An xlwings Sheet object.
         instr: The CellInstruction to apply.
@@ -521,22 +525,48 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     cell = sheet.range((instr.row, instr.col))
     cell.value = instr.value
 
-    if instr.merge_cols > 1:
-        merge_range = sheet.range(
-            (instr.row, instr.col),
-            (instr.row, instr.col + instr.merge_cols - 1),
-        )
-        merge_range.merge()
+    try:
+        if instr.merge_cols > 1:
+            merge_range = sheet.range(
+                (instr.row, instr.col),
+                (instr.row, instr.col + instr.merge_cols - 1),
+            )
+            merge_range.merge()
+    except (NotImplementedError, AttributeError):
+        pass
 
-    if instr.bold:
-        cell.font.bold = True
-    if instr.bg_color:
-        cell.color = instr.bg_color
-    if instr.font_color:
-        cell.font.color = instr.font_color
-    if instr.number_format:
-        cell.number_format = instr.number_format
-    if instr.row_height:
-        cell.row_height = instr.row_height
-    if instr.note:
-        cell.note.text = instr.note
+    try:
+        if instr.bold:
+            cell.font.bold = True
+    except (NotImplementedError, AttributeError):
+        pass
+
+    try:
+        if instr.bg_color:
+            cell.color = instr.bg_color
+    except (NotImplementedError, AttributeError):
+        pass
+
+    try:
+        if instr.font_color:
+            cell.font.color = instr.font_color
+    except (NotImplementedError, AttributeError):
+        pass
+
+    try:
+        if instr.number_format:
+            cell.number_format = instr.number_format
+    except (NotImplementedError, AttributeError):
+        pass
+
+    try:
+        if instr.row_height:
+            cell.row_height = instr.row_height
+    except (NotImplementedError, AttributeError):
+        pass
+
+    try:
+        if instr.note:
+            cell.note.text = instr.note
+    except (NotImplementedError, AttributeError):
+        pass
