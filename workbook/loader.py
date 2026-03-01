@@ -14,9 +14,11 @@ import types
 import xlwings as xw
 
 # --- Configuration (change only if you forked the repo) ---
+GITHUB_REPO = "ccirone2/docx_builder"
+GITHUB_BRANCH = "main"
 GITHUB_BASE = (
-    "https://raw.githubusercontent.com"
-    "/ccirone2/docx_builder/main"
+    "https://raw.githubusercontent.com/"
+    + GITHUB_REPO + "/" + GITHUB_BRANCH
 )
 
 _runner_mod = None
@@ -81,9 +83,14 @@ def _show_error(book, exc):
             book.sheets.add("Control")
             c = book.sheets["Control"]
             c["A1"].value = "DOCUMENT GENERATOR"
-            c["A1"].font.bold = True
+        msg = str(exc)
+        if not msg:
+            # Some exceptions (e.g. NotImplementedError) have no message —
+            # include the traceback to help diagnose
+            import traceback
+            msg = traceback.format_exc()
         book.sheets["Control"][_STATUS_CELL].value = (
-            "Error [" + type(exc).__name__ + "]: " + str(exc)
+            "Error [" + type(exc).__name__ + "]: " + msg
         )
     except Exception:
         pass
