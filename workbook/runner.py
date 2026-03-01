@@ -7,11 +7,19 @@ Changes here take effect the next time a user opens their workbook
 (or clicks "Reload Scripts").
 """
 
+import logging
 import sys
 import types
 from typing import Any
 
 import yaml
+
+log = logging.getLogger("docx_builder")
+if not log.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("%(message)s"))
+    log.addHandler(_handler)
+    log.setLevel(logging.INFO)
 
 # --- Configuration ---
 GITHUB_REPO = "ccirone2/docx_builder"
@@ -110,8 +118,8 @@ def _load_module(name: str) -> dict:
 
 
 def _set_status(book: Any, message: str) -> None:
-    """Print a status message to the xlwings task pane output."""
-    print(message)  # noqa: T201
+    """Log a status message to the xlwings task pane output."""
+    log.info(message)
 
 
 def _get_github_base(book: Any) -> str:
@@ -217,12 +225,45 @@ def _fmt(cell, **kwargs):
 
 
 def _autofit_sheets(book: Any) -> None:
-    """Autofit columns on all sheets (best-effort)."""
+    """Autofit columns on all sheets (best-effort).
+
+    Tries sheet.autofit() first. If xlwings Lite doesn't support it,
+    falls back to setting explicit column widths based on content length.
+    """
     for sheet in book.sheets:
         try:
             sheet.autofit("c")
-        except (NotImplementedError, AttributeError):
+            continue
+        except (NotImplementedError, AttributeError, Exception):
             pass
+        try:
+            sheet.autofit()
+            continue
+        except (NotImplementedError, AttributeError, Exception):
+            pass
+        # Fallback: set explicit column widths from cell content
+        _set_column_widths(sheet)
+
+
+def _set_column_widths(sheet: Any) -> None:
+    """Set column widths based on max content length per column."""
+    try:
+        used = sheet.used_range
+        if used is None:
+            return
+        last_col = used.last_cell.column
+        last_row = used.last_cell.row
+        for col_idx in range(1, last_col + 1):
+            max_len = 8  # minimum width
+            for row_idx in range(1, min(last_row + 1, 50)):
+                val = sheet.range((row_idx, col_idx)).value
+                if val is not None:
+                    max_len = max(max_len, len(str(val)))
+            # Cap at 60 chars, add a little padding
+            width = min(max_len + 2, 60)
+            sheet.range((1, col_idx)).column_width = width
+    except (NotImplementedError, AttributeError, Exception):
+        pass
 
 
 def _build_control_sheet(book: Any) -> None:

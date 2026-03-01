@@ -9,9 +9,18 @@ Setup:
   3. Click "Init Workbook" in the task pane
 """
 
+import logging
+import sys
 import types
 
 import xlwings as xw
+
+log = logging.getLogger("docx_builder")
+if not log.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("%(message)s"))
+    log.addHandler(_handler)
+    log.setLevel(logging.INFO)
 
 # --- Configuration (change only if you forked the repo) ---
 GITHUB_REPO = "ccirone2/docx_builder"
@@ -75,12 +84,12 @@ def _get_runner():
 
 
 def _show_error(book, exc):
-    """Print an error to the xlwings task pane output."""
+    """Log an error to the xlwings task pane output."""
     msg = str(exc)
     if not msg:
         import traceback
         msg = traceback.format_exc()
-    print("Error [" + type(exc).__name__ + "]: " + msg)  # noqa: T201
+    log.error("Error [%s]: %s", type(exc).__name__, msg)
 
 
 def _call(book, func_name):
@@ -160,6 +169,6 @@ def reload_scripts(book: xw.Book) -> None:
     _runner_mod = None
     try:
         _get_runner()
-        print("Scripts reloaded from GitHub")  # noqa: T201
+        log.info("Scripts reloaded from GitHub")
     except Exception as e:
         _show_error(book, e)
