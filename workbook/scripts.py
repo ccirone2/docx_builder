@@ -14,6 +14,11 @@ from typing import Any
 
 import yaml
 
+try:
+    import xlwings as xw
+except ImportError:
+    xw = None  # type: ignore[assignment]
+
 # --- Configuration ---
 GITHUB_BASE = (
     "https://raw.githubusercontent.com"
@@ -192,9 +197,9 @@ def _read_compound_data(book: Any, field: Any) -> dict:
 
 # --- Scripts ---
 
-try:
-    from xlwings import script
-except ImportError:
+if xw is not None:
+    script = xw.script
+else:
     # For testing outside xlwings Lite
     def script(button: str = "") -> Any:  # type: ignore[misc]
         """No-op decorator when xlwings is not available."""
@@ -205,7 +210,7 @@ except ImportError:
         return decorator
 
 
-def _build_control_sheet(book: Any) -> None:
+def _build_control_sheet(book: xw.Book) -> None:
     """Create and populate the Control sheet layout.
 
     Uses direct xlwings calls — no network or module loading needed.
@@ -257,7 +262,7 @@ def _build_control_sheet(book: Any) -> None:
 
 
 @script(button="[btn_easy_init]Control!D5")
-def init_workbook(book: Any) -> None:
+def init_workbook(book: xw.Book) -> None:
     """One-click workbook setup: create Control sheet, fetch schemas, build sheets.
 
     This is the "easy button". Paste the script, click this, done.
@@ -298,7 +303,7 @@ def init_workbook(book: Any) -> None:
 
 
 @script(button="[btn_init]Control!B5")
-def initialize_sheets(book: Any) -> None:
+def initialize_sheets(book: xw.Book) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
     try:
         _set_status(book, "Loading...")
@@ -332,7 +337,7 @@ def initialize_sheets(book: Any) -> None:
 
 
 @script(button="[btn_generate]Control!B7")
-def generate_document(book: Any) -> None:
+def generate_document(book: xw.Book) -> None:
     """Read data, validate, build .docx, trigger download."""
     try:
         _set_status(book, "Generating document...")
@@ -375,7 +380,7 @@ def generate_document(book: Any) -> None:
 
 
 @script(button="[btn_validate]Control!B9")
-def validate_data(book: Any) -> None:
+def validate_data(book: xw.Book) -> None:
     """Run validation only, show results in status area."""
     try:
         _set_status(book, "Validating...")
@@ -413,7 +418,7 @@ def validate_data(book: Any) -> None:
 
 
 @script(button="[btn_export]Control!B11")
-def export_data_yaml(book: Any) -> None:
+def export_data_yaml(book: xw.Book) -> None:
     """Export data to YAML, write to staging cell."""
     try:
         _set_status(book, "Exporting...")
@@ -451,7 +456,7 @@ def export_data_yaml(book: Any) -> None:
 
 
 @script(button="[btn_import]Control!B13")
-def import_data_yaml(book: Any) -> None:
+def import_data_yaml(book: xw.Book) -> None:
     """Import YAML data from the staging cell."""
     try:
         _set_status(book, "Importing...")
@@ -493,7 +498,7 @@ def import_data_yaml(book: Any) -> None:
 
 
 @script(button="[btn_llm]Control!B15")
-def generate_llm_prompt(book: Any) -> None:
+def generate_llm_prompt(book: xw.Book) -> None:
     """Generate LLM fill-in prompt, write to staging cell."""
     try:
         _set_status(book, "Generating LLM prompt...")
@@ -533,7 +538,7 @@ def generate_llm_prompt(book: Any) -> None:
 
 
 @script(button="[btn_load_schema]Control!B17")
-def load_custom_schema(book: Any) -> None:
+def load_custom_schema(book: xw.Book) -> None:
     """Read YAML from staging cell and register as local schema."""
     try:
         _set_status(book, "Loading custom schema...")
@@ -559,7 +564,7 @@ def load_custom_schema(book: Any) -> None:
 
 
 @script(button="[btn_load_template]Control!B19")
-def load_custom_template(book: Any) -> None:
+def load_custom_template(book: xw.Book) -> None:
     """Read Python template source from staging cell."""
     try:
         _set_status(book, "Loading custom template...")
