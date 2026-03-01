@@ -225,6 +225,61 @@ except ImportError:
         return decorator
 
 
+@script(button="[btn_easy_init]Control!D5")
+def init_workbook(book: Any) -> None:
+    """One-click workbook setup: create Control sheet, build layout, fetch schemas.
+
+    This is the "easy button". User opens a blank workbook, pastes this
+    script, and clicks Init Workbook. Everything else is created automatically:
+    the Control sheet layout, document-type dropdown, and data entry sheets.
+    """
+    try:
+        # Create Control sheet if it doesn't exist
+        sheet_names = [s.name for s in book.sheets]
+        if "Control" not in sheet_names:
+            book.sheets.add("Control")
+
+        _set_status(book, "Setting up workbook...")
+
+        # Build the Control sheet layout
+        builder = _load_module("excel_builder")
+        control_instrs = builder["plan_control_sheet"](github_base=GITHUB_BASE)
+
+        control_sheet = book.sheets["Control"]
+        for instr in control_instrs:
+            builder["apply_cell"](control_sheet, instr)
+
+        # Fetch registry and populate dropdown
+        _set_status(book, "Fetching schemas...")
+        registry_text = _fetch("schemas/registry.yaml")
+        registry = yaml.safe_load(registry_text)
+        schema_names = [s["name"] for s in registry.get("schemas", [])]
+
+        if schema_names:
+            control_sheet[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
+
+        # Build data entry sheets for the first available schema
+        selected = _read_selected_schema(book)
+        if selected:
+            entry = _find_schema_entry(registry, selected)
+            if entry:
+                _set_status(book, f"Building sheets for {entry['name']}...")
+                schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
+                loader = _load_module("schema_loader")
+                schema = loader["load_schema_from_text"](schema_yaml)
+
+                plan = builder["plan_sheets"](schema)
+                builder["build_sheets"](book, plan)
+
+        _set_status(book, f"Ready — {len(schema_names)} document types loaded")
+
+    except Exception as e:
+        try:
+            _set_status(book, f"Error: {e}")
+        except Exception:
+            pass  # Control sheet may not exist yet
+
+
 @script(button="[btn_init]Control!B5")
 def initialize_sheets(book: Any) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""

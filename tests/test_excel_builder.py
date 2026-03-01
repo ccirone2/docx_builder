@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from engine.excel_builder import (
     CellInstruction,
+    plan_control_sheet,
     plan_group_layout,
     plan_sheets,
     plan_table_layout,
@@ -119,3 +120,90 @@ def test_plan_table_layout_column_formats(rfq_schema: Schema) -> None:
     # Check that unit_price column width hint is for currency (15)
     # Column 5 = unit_price (currency type)
     assert tp.column_widths[4] == 15  # 0-indexed, 5th column
+
+
+# ---------------------------------------------------------------------------
+# plan_control_sheet tests
+# ---------------------------------------------------------------------------
+
+
+def test_plan_control_sheet_returns_instructions() -> None:
+    """plan_control_sheet returns a non-empty list of CellInstruction."""
+    instrs = plan_control_sheet()
+    assert len(instrs) > 0
+    assert all(isinstance(i, CellInstruction) for i in instrs)
+
+
+def test_plan_control_sheet_all_on_control_sheet() -> None:
+    """Every instruction targets the 'Control' sheet."""
+    instrs = plan_control_sheet()
+    assert all(i.sheet == "Control" for i in instrs)
+
+
+def test_plan_control_sheet_has_title_banner() -> None:
+    """First instruction is the DOCUMENT GENERATOR title banner."""
+    instrs = plan_control_sheet()
+    title = [i for i in instrs if i.value == "DOCUMENT GENERATOR"]
+    assert len(title) == 1
+    assert title[0].row == 1
+    assert title[0].is_header
+    assert title[0].merge_cols >= 4
+
+
+def test_plan_control_sheet_has_button_labels() -> None:
+    """All expected button labels are present."""
+    instrs = plan_control_sheet()
+    values = {str(i.value) for i in instrs}
+    expected_labels = [
+        "Initialize Sheets",
+        "Generate Document",
+        "Validate Data",
+        "Export Data (YAML)",
+        "Import Data (YAML)",
+        "Generate LLM Prompt",
+        "Load Custom Schema",
+        "Load Custom Template",
+    ]
+    for label in expected_labels:
+        assert label in values, f"Missing button label: {label}"
+
+
+def test_plan_control_sheet_has_document_type_selector() -> None:
+    """Row 3 has Document Type label and empty dropdown cell."""
+    instrs = plan_control_sheet()
+    doc_type = [i for i in instrs if i.value == "Document Type:"]
+    assert len(doc_type) == 1
+    assert doc_type[0].row == 3
+    assert doc_type[0].col == 1
+
+
+def test_plan_control_sheet_has_config_section() -> None:
+    """Configuration section has GitHub URL and Redact toggle."""
+    instrs = plan_control_sheet()
+    config_header = [i for i in instrs if i.value == "CONFIGURATION"]
+    assert len(config_header) == 1
+
+    gh_label = [i for i in instrs if i.value == "GitHub Repo URL:"]
+    assert len(gh_label) == 1
+
+    redact_label = [i for i in instrs if i.value == "Redact on Export:"]
+    assert len(redact_label) == 1
+
+    redact_value = [i for i in instrs if i.value == "TRUE" and i.dropdown_choices]
+    assert len(redact_value) == 1
+    assert redact_value[0].dropdown_choices == ["TRUE", "FALSE"]
+
+
+def test_plan_control_sheet_custom_github_url() -> None:
+    """Custom github_base URL appears in the config area."""
+    custom = "https://raw.githubusercontent.com/myorg/myrepo/main"
+    instrs = plan_control_sheet(github_base=custom)
+    url_cells = [i for i in instrs if i.value == custom]
+    assert len(url_cells) == 1
+
+
+def test_plan_control_sheet_has_yaml_staging() -> None:
+    """YAML STAGING AREA section header exists."""
+    instrs = plan_control_sheet()
+    staging = [i for i in instrs if i.value == "YAML STAGING AREA"]
+    assert len(staging) == 1

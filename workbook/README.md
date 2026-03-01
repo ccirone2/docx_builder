@@ -5,46 +5,19 @@
 - Microsoft Excel (desktop or web)
 - [xlwings Lite](https://www.xlwings.org/lite) add-in installed from the Office add-in store
 
-## Setup Steps
+## Quick Start (3 steps)
 
 ### 1. Install xlwings Lite
 
 Install the xlwings Lite add-in from the Microsoft Office add-in store.
 
-### 2. Open a Blank Workbook
+### 2. Paste the Script
 
-Create a new Excel workbook.
-
-### 3. Create the Control Sheet
-
-Create a sheet named **"Control"** with the following layout:
-
-```
-Row 1:  A: DOCUMENT GENERATOR
-Row 3:  A: Document Type:        B: [dropdown area]     D: [status area]
-Row 5:  A: [Initialize Sheets]
-Row 7:  A: [Generate Document]
-Row 9:  A: [Validate Data]
-Row 11: A: [Export Data (YAML)]
-Row 13: A: [Import Data (YAML)]
-Row 15: A: [LLM Prompt]
-Row 16: A: Redact on Export:     D: TRUE
-
-Row 10: A: CONFIGURATION
-Row 12: A: GitHub Repo URL:      D: https://raw.githubusercontent.com/ccirone2/docx_builder/main
-
-Row 20: D: [YAML staging area - for import/export/LLM prompts]
-```
-
-### 4. Paste the Bootstrap Script
-
-1. Open the xlwings Lite code editor (in the add-in panel)
-2. Copy the contents of `scripts.py` from this directory
-3. Paste into the code editor
-
-### 5. Set Pyodide Requirements
-
-In the xlwings Lite settings, add these packages:
+1. Open a new Excel workbook
+2. Open the xlwings Lite code editor (in the add-in panel)
+3. Copy the contents of `scripts.py` from this directory
+4. Paste into the code editor
+5. In the xlwings Lite settings, add these packages:
 
 ```
 python-docx
@@ -52,12 +25,15 @@ docxtpl
 pyyaml
 ```
 
-### 6. Initialize
+### 3. Click "Init Workbook"
 
-Click the **Initialize Sheets** button. The workbook will:
-1. Fetch the schema registry from GitHub
-2. Show available document types in the dropdown
-3. Build data entry sheets for the selected document type
+Click the **Init Workbook** button in the xlwings panel. That's it! The system will:
+1. Create the Control sheet with all labels and formatting
+2. Set up the configuration area and YAML staging cell
+3. Fetch the schema registry from GitHub
+4. Build data entry sheets for the default document type
+
+No manual sheet creation or cell positioning required.
 
 ## Usage
 
