@@ -22,7 +22,6 @@ GITHUB_BASE = (
 )
 
 _runner_mod = None
-_STATUS_CELL = "D3"
 
 
 # --- Bootstrap helpers ---
@@ -76,24 +75,12 @@ def _get_runner():
 
 
 def _show_error(book, exc):
-    """Display an error on the Control sheet (creating it if needed)."""
-    try:
-        names = [s.name for s in book.sheets]
-        if "Control" not in names:
-            book.sheets.add("Control")
-            c = book.sheets["Control"]
-            c["A1"].value = "DOCUMENT GENERATOR"
-        msg = str(exc)
-        if not msg:
-            # Some exceptions (e.g. NotImplementedError) have no message —
-            # include the traceback to help diagnose
-            import traceback
-            msg = traceback.format_exc()
-        book.sheets["Control"][_STATUS_CELL].value = (
-            "Error [" + type(exc).__name__ + "]: " + msg
-        )
-    except Exception:
-        pass
+    """Print an error to the xlwings task pane output."""
+    msg = str(exc)
+    if not msg:
+        import traceback
+        msg = traceback.format_exc()
+    print("Error [" + type(exc).__name__ + "]: " + msg)  # noqa: T201
 
 
 def _call(book, func_name):
@@ -173,9 +160,6 @@ def reload_scripts(book: xw.Book) -> None:
     _runner_mod = None
     try:
         _get_runner()
-        try:
-            book.sheets["Control"][_STATUS_CELL].value = "Scripts reloaded from GitHub"
-        except Exception:
-            pass
+        print("Scripts reloaded from GitHub")  # noqa: T201
     except Exception as e:
         _show_error(book, e)

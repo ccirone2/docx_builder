@@ -24,7 +24,6 @@ _cache: dict[str, str] = {}
 _engine: dict[str, dict] = {}
 
 # Cell addresses on the Control sheet
-STATUS_CELL = "D3"
 SCHEMA_DROPDOWN_CELL = "B3"
 YAML_STAGING_CELL = "D20"
 
@@ -111,8 +110,8 @@ def _load_module(name: str) -> dict:
 
 
 def _set_status(book: Any, message: str) -> None:
-    """Write a status message to the Control sheet."""
-    book.sheets["Control"][STATUS_CELL].value = message
+    """Print a status message to the xlwings task pane output."""
+    print(message)  # noqa: T201
 
 
 def _get_github_base(book: Any) -> str:
@@ -217,6 +216,15 @@ def _fmt(cell, **kwargs):
             pass
 
 
+def _autofit_sheets(book: Any) -> None:
+    """Autofit columns on all sheets (best-effort)."""
+    for sheet in book.sheets:
+        try:
+            sheet.autofit("c")
+        except (NotImplementedError, AttributeError):
+            pass
+
+
 def _build_control_sheet(book: Any) -> None:
     """Create and populate the Control sheet layout.
 
@@ -236,7 +244,6 @@ def _build_control_sheet(book: Any) -> None:
     # Document Type selector (Row 3)
     c["A3"].value = "Document Type:"
     _fmt(c["A3"], bold=True)
-    c[STATUS_CELL].value = "Ready"
 
     # Button labels (column A, next to xlwings button widgets)
     for row, label in [
@@ -301,22 +308,20 @@ def init_workbook(book: Any) -> None:
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
 
+        _autofit_sheets(book)
         _set_status(book, "Ready — " + str(len(schema_names)) + " document types loaded")
 
     except Exception as e:
         _report_error(book, e)
 
 
-def _report_error(book, exc):
-    """Write a detailed error to the status cell, including traceback if no message."""
-    try:
-        msg = str(exc)
-        if not msg:
-            import traceback
-            msg = traceback.format_exc()
-        _set_status(book, "Error [" + type(exc).__name__ + "]: " + msg)
-    except Exception:
-        pass
+def _report_error(book: Any, exc: Exception) -> None:
+    """Print a detailed error, including traceback if no message."""
+    msg = str(exc)
+    if not msg:
+        import traceback
+        msg = traceback.format_exc()
+    _set_status(book, "Error [" + type(exc).__name__ + "]: " + msg)
 
 
 def initialize_sheets(book: Any) -> None:
@@ -349,7 +354,7 @@ def initialize_sheets(book: Any) -> None:
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def generate_document(book: Any) -> None:
@@ -391,7 +396,7 @@ def generate_document(book: Any) -> None:
         _set_status(book, f"Document generated: {filename}")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def validate_data(book: Any) -> None:
@@ -428,7 +433,7 @@ def validate_data(book: Any) -> None:
             _set_status(book, f"Validation failed: {len(result.errors)} errors")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def export_data_yaml(book: Any) -> None:
@@ -465,7 +470,7 @@ def export_data_yaml(book: Any) -> None:
         _set_status(book, "Data exported to YAML (see staging cell)")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def import_data_yaml(book: Any) -> None:
@@ -506,7 +511,7 @@ def import_data_yaml(book: Any) -> None:
             _set_status(book, f"Data imported successfully ({len(data)} fields)")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def generate_llm_prompt(book: Any) -> None:
@@ -545,7 +550,7 @@ def generate_llm_prompt(book: Any) -> None:
         _set_status(book, "LLM prompt generated (see staging cell)")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def load_custom_schema(book: Any) -> None:
@@ -570,7 +575,7 @@ def load_custom_schema(book: Any) -> None:
         _set_status(book, f"Custom schema loaded: {entry.name}")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
 
 
 def load_custom_template(book: Any) -> None:
@@ -595,4 +600,4 @@ def load_custom_template(book: Any) -> None:
         _set_status(book, "Custom template loaded successfully")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        _report_error(book, e)
