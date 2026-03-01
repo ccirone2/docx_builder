@@ -78,6 +78,26 @@ To paste a custom schema:
 1. Paste the YAML into the staging cell (D20)
 2. Click "Load Custom Schema"
 
+## Optional: Column Autofit
+
+xlwings Lite does not support `column_width` or `autofit()` in its Python
+API. The runner will attempt to call an Office.js callback named
+`autofitColumns` via `book.app.macro()`. If you want column autofit, add
+this JavaScript in your xlwings Lite custom scripts setup:
+
+```javascript
+async function autofitColumns(context, sheetName) {
+  const sheet = context.workbook.worksheets.getItem(sheetName);
+  const range = sheet.getUsedRange();
+  range.format.autofitColumns();
+  await context.sync();
+}
+xlwings.registerCallback(autofitColumns);
+```
+
+If this callback is not registered, autofit is silently skipped and
+columns stay at their Excel default widths.
+
 ## Alternative: Self-Contained Script
 
 If you prefer a single file with no remote fetching, you can paste

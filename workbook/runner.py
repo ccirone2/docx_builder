@@ -217,54 +217,23 @@ def _fmt(cell, **kwargs):
 
 
 def _autofit_sheets(book: Any) -> None:
-    """Set column widths on all sheets based on cell content.
+    """Autofit columns on all sheets (best-effort).
 
-    sheet.autofit() is unreliable in xlwings Lite (may silently no-op),
-    so we always set explicit widths computed from content length.
-    """
-    for sheet in book.sheets:
-        _set_column_widths(sheet)
-
-
-def _set_column_widths(sheet: Any) -> None:
-    """Set column widths based on max content length per column.
-
-    Computes the max content length per column, then tries
-    multiple xlwings APIs to set the width.
+    xlwings Lite does not implement column_width or autofit() in its
+    Python API.  The only path is book.app.macro() calling a registered
+    Office.js JavaScript callback.  If the JS callback "autofitColumns"
+    is registered (see workbook/README.md), we call it per sheet.
+    Otherwise we silently skip — column widths remain at Excel defaults.
     """
     try:
-        used = sheet.used_range
-        if used is None:
-            return
-        last_col = used.last_cell.column
-        last_row = used.last_cell.row
+        autofit = book.app.macro("autofitColumns")
     except Exception:
         return
-
-    for col_idx in range(1, last_col + 1):
-        max_len = 8  # minimum width
+    for sheet in book.sheets:
         try:
-            for row_idx in range(1, min(last_row + 1, 50)):
-                val = sheet.range((row_idx, col_idx)).value
-                if val is not None:
-                    max_len = max(max_len, len(str(val)))
+            autofit(sheet.name)
         except Exception:
-            continue
-        width = min(max_len + 2, 60)
-
-        # Try column_width on a cell in the column
-        try:
-            sheet.range((1, col_idx)).column_width = width
-            continue
-        except Exception:
-            pass
-        # Try column_width on the whole column range (e.g. "A:A")
-        try:
-            col_letter = chr(64 + col_idx) if col_idx <= 26 else None
-            if col_letter:
-                sheet[col_letter + ":" + col_letter].column_width = width
-        except Exception:
-            pass
+            return
 
 
 def _build_control_sheet(book: Any) -> None:

@@ -48,7 +48,6 @@ class CellInstruction:
     dropdown_choices: list[str] | None = None
     is_header: bool = False
     note: str = ""
-    column_width: int | None = None
 
 
 @dataclass
@@ -459,12 +458,11 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
         # Width hint based on type
         col_type = col.get("type", "text")
         if col_type in ("currency", "number"):
-            w = 15
+            column_widths.append(15)
         elif col_type == "boolean":
-            w = 12
+            column_widths.append(12)
         else:
-            w = max(25, len(col.get("label", "")) + 4)
-        column_widths.append(w)
+            column_widths.append(max(25, len(col.get("label", "")) + 4))
 
         headers.append(
             CellInstruction(
@@ -476,7 +474,6 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
                 bg_color=HEADER_COLOR,
                 font_color=HEADER_FONT_COLOR,
                 is_header=True,
-                column_width=w,
             )
         )
 
@@ -559,8 +556,3 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
         cell.row_height = instr.row_height
     if instr.note:
         cell.note.text = instr.note
-    if instr.column_width:
-        try:
-            cell.column_width = instr.column_width
-        except (NotImplementedError, AttributeError):
-            pass
