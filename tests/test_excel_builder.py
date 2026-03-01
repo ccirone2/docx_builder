@@ -111,15 +111,14 @@ def test_plan_table_layout_required_docs(rfq_schema: Schema) -> None:
     assert len(tp.default_rows) == 6
 
 
-def test_plan_table_layout_column_formats(rfq_schema: Schema) -> None:
-    """Currency columns in work_items get currency number format."""
+def test_plan_table_layout_header_count(rfq_schema: Schema) -> None:
+    """work_items table plan has one header per column."""
     work_items = rfq_schema.get_field("work_items")
     assert work_items is not None
     tp = plan_table_layout(work_items, "Table - Work Items")
 
-    # Check that unit_price column width hint is for currency (15)
-    # Column 5 = unit_price (currency type)
-    assert tp.column_widths[4] == 15  # 0-indexed, 5th column
+    assert len(tp.headers) == len(work_items.columns)
+    assert all(h.is_header for h in tp.headers)
 
 
 # ---------------------------------------------------------------------------

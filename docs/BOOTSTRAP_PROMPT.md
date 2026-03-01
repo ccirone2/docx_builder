@@ -290,7 +290,6 @@ class TablePlan:
     sheet: str
     headers: list[CellInstruction]
     default_rows: list[list[CellInstruction]]
-    column_widths: list[int]
 ```
 
 **xlwings adapter functions (for runtime only, not unit tested):**

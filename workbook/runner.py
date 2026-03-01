@@ -216,25 +216,6 @@ def _fmt(cell, **kwargs):
             pass
 
 
-def _autofit_sheets(book: Any) -> None:
-    """Autofit columns on all sheets (best-effort).
-
-    xlwings Lite does not implement column_width or autofit() in its
-    Python API.  The only path is book.app.macro() calling a registered
-    Office.js JavaScript callback.  If the JS callback "autofitColumns"
-    is registered (see workbook/README.md), we call it per sheet.
-    Otherwise we silently skip — column widths remain at Excel defaults.
-    """
-    try:
-        autofit = book.app.macro("autofitColumns")
-    except Exception:
-        return
-    for sheet in book.sheets:
-        try:
-            autofit(sheet.name)
-        except Exception:
-            return
-
 
 def _build_control_sheet(book: Any) -> None:
     """Create and populate the Control sheet layout.
@@ -297,7 +278,7 @@ def init_workbook(book: Any) -> None:
         registry = yaml.safe_load(registry_text)
         schema_names = [s["name"] for s in registry.get("schemas", [])]
 
-        _set_status(book, "Step 2/5: Found " + str(len(schema_names)) + " schemas")
+        _set_status(book, f"Step 2/5: Found {len(schema_names)} schemas")
         control = book.sheets["Control"]
         if schema_names:
             control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
@@ -307,7 +288,7 @@ def init_workbook(book: Any) -> None:
         if selected:
             entry = _find_schema_entry(registry, selected)
             if entry:
-                _set_status(book, "Step 3/5: Fetching " + entry["name"] + "...")
+                _set_status(book, f"Step 3/5: Fetching {entry['name']}...")
                 schema_yaml = _fetch("schemas/" + entry["schema_file"])
 
                 _set_status(book, "Step 4/5: Loading engine modules...")
@@ -319,8 +300,7 @@ def init_workbook(book: Any) -> None:
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
 
-        _autofit_sheets(book)
-        _set_status(book, "Ready — " + str(len(schema_names)) + " document types loaded")
+        _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
     except Exception as e:
         _report_error(book, e)
@@ -332,7 +312,7 @@ def _report_error(book: Any, exc: Exception) -> None:
     if not msg:
         import traceback
         msg = traceback.format_exc()
-    _set_status(book, "Error [" + type(exc).__name__ + "]: " + msg)
+    _set_status(book, f"Error [{type(exc).__name__}]: {msg}")
 
 
 def initialize_sheets(book: Any) -> None:

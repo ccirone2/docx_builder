@@ -80,7 +80,7 @@ def _show_error(book, exc):
     if not msg:
         import traceback
         msg = traceback.format_exc()
-    print("Error [" + type(exc).__name__ + "]: " + msg)  # noqa: T201
+    print(f"Error [{type(exc).__name__}]: {msg}")  # noqa: T201
 
 
 def _call(book, func_name):

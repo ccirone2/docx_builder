@@ -65,7 +65,6 @@ class TablePlan:
     sheet: str
     headers: list[CellInstruction]
     default_rows: list[list[CellInstruction]]
-    column_widths: list[int]
 
 
 # ---------------------------------------------------------------------------
@@ -443,27 +442,13 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
         sheet_name: Target sheet name.
 
     Returns:
-        TablePlan with headers, default rows, and column widths.
+        TablePlan with headers and default rows.
     """
     columns = field.columns or []
     headers: list[CellInstruction] = []
-    column_widths: list[int] = []
 
     # Header row
     for col_idx, col in enumerate(columns, start=1):
-        number_format = ""
-        if col.get("type") in ("currency",):
-            number_format = "$#,##0.00"
-
-        # Width hint based on type
-        col_type = col.get("type", "text")
-        if col_type in ("currency", "number"):
-            column_widths.append(15)
-        elif col_type == "boolean":
-            column_widths.append(12)
-        else:
-            column_widths.append(max(25, len(col.get("label", "")) + 4))
-
         headers.append(
             CellInstruction(
                 sheet=sheet_name,
@@ -502,7 +487,6 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
         sheet=sheet_name,
         headers=headers,
         default_rows=default_rows,
-        column_widths=column_widths,
     )
 
 
