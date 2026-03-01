@@ -9,29 +9,9 @@ Setup:
   3. Click "Init Workbook" in the task pane
 """
 
-import logging
 import types
 
 import xlwings as xw
-
-
-class _PrintHandler(logging.Handler):
-    """Logging handler that uses print() for xlwings Lite compatibility.
-
-    Pyodide intercepts print() to route output to the task pane,
-    but sys.stdout.write() (used by StreamHandler) is not captured.
-    """
-
-    def emit(self, record: logging.LogRecord) -> None:
-        print(self.format(record))  # noqa: T201
-
-
-log = logging.getLogger("docx_builder")
-if not log.handlers:
-    _handler = _PrintHandler()
-    _handler.setFormatter(logging.Formatter("%(message)s"))
-    log.addHandler(_handler)
-    log.setLevel(logging.INFO)
 
 # --- Configuration (change only if you forked the repo) ---
 GITHUB_REPO = "ccirone2/docx_builder"
@@ -95,12 +75,12 @@ def _get_runner():
 
 
 def _show_error(book, exc):
-    """Log an error to the xlwings task pane output."""
+    """Print an error to the xlwings task pane output."""
     msg = str(exc)
     if not msg:
         import traceback
         msg = traceback.format_exc()
-    log.error("Error [%s]: %s", type(exc).__name__, msg)
+    print("Error [" + type(exc).__name__ + "]: " + msg)  # noqa: T201
 
 
 def _call(book, func_name):
@@ -183,6 +163,6 @@ def reload_scripts(book: xw.Book) -> None:
     _runner_mod = None
     try:
         _get_runner()
-        log.info("Scripts reloaded from GitHub")
+        print("Scripts reloaded from GitHub")  # noqa: T201
     except Exception as e:
         _show_error(book, e)

@@ -7,31 +7,11 @@ Changes here take effect the next time a user opens their workbook
 (or clicks "Reload Scripts").
 """
 
-import logging
 import sys
 import types
 from typing import Any
 
 import yaml
-
-
-class _PrintHandler(logging.Handler):
-    """Logging handler that uses print() for xlwings Lite compatibility.
-
-    Pyodide intercepts print() to route output to the task pane,
-    but sys.stdout.write() (used by StreamHandler) is not captured.
-    """
-
-    def emit(self, record: logging.LogRecord) -> None:
-        print(self.format(record))  # noqa: T201
-
-
-log = logging.getLogger("docx_builder")
-if not log.handlers:
-    _handler = _PrintHandler()
-    _handler.setFormatter(logging.Formatter("%(message)s"))
-    log.addHandler(_handler)
-    log.setLevel(logging.INFO)
 
 # --- Configuration ---
 GITHUB_REPO = "ccirone2/docx_builder"
@@ -130,8 +110,8 @@ def _load_module(name: str) -> dict:
 
 
 def _set_status(book: Any, message: str) -> None:
-    """Log a status message to the xlwings task pane output."""
-    log.info(message)
+    """Print a status message to the xlwings task pane output."""
+    print(message)  # noqa: T201
 
 
 def _get_github_base(book: Any) -> str:
@@ -247,24 +227,44 @@ def _autofit_sheets(book: Any) -> None:
 
 
 def _set_column_widths(sheet: Any) -> None:
-    """Set column widths based on max content length per column."""
+    """Set column widths based on max content length per column.
+
+    Computes the max content length per column, then tries
+    multiple xlwings APIs to set the width.
+    """
     try:
         used = sheet.used_range
         if used is None:
             return
         last_col = used.last_cell.column
         last_row = used.last_cell.row
-        for col_idx in range(1, last_col + 1):
-            max_len = 8  # minimum width
+    except Exception:
+        return
+
+    for col_idx in range(1, last_col + 1):
+        max_len = 8  # minimum width
+        try:
             for row_idx in range(1, min(last_row + 1, 50)):
                 val = sheet.range((row_idx, col_idx)).value
                 if val is not None:
                     max_len = max(max_len, len(str(val)))
-            # Cap at 60 chars, add a little padding
-            width = min(max_len + 2, 60)
+        except Exception:
+            continue
+        width = min(max_len + 2, 60)
+
+        # Try column_width on a cell in the column
+        try:
             sheet.range((1, col_idx)).column_width = width
-    except (NotImplementedError, AttributeError):
-        pass
+            continue
+        except Exception:
+            pass
+        # Try column_width on the whole column range (e.g. "A:A")
+        try:
+            col_letter = chr(64 + col_idx) if col_idx <= 26 else None
+            if col_letter:
+                sheet[col_letter + ":" + col_letter].column_width = width
+        except Exception:
+            pass
 
 
 def _build_control_sheet(book: Any) -> None:
