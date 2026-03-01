@@ -6,8 +6,6 @@ The workbook fetches engine code, schemas, and templates from GitHub
 at runtime. This script is the thin shell that wires everything up.
 """
 
-from __future__ import annotations
-
 import sys
 import types
 from typing import Any
@@ -17,7 +15,8 @@ import yaml
 try:
     import xlwings as xw
 except ImportError:
-    xw = None  # type: ignore[assignment]
+    # Stub so xw.Book evaluates at definition time in tests
+    xw = types.SimpleNamespace(Book=type("Book", (), {}))  # type: ignore[assignment]
 
 # --- Configuration ---
 GITHUB_BASE = (
@@ -197,9 +196,9 @@ def _read_compound_data(book: Any, field: Any) -> dict:
 
 # --- Scripts ---
 
-if xw is not None:
-    script = xw.script
-else:
+try:
+    script = xw.script  # type: ignore[union-attr]
+except AttributeError:
     # For testing outside xlwings Lite
     def script(button: str = "") -> Any:  # type: ignore[misc]
         """No-op decorator when xlwings is not available."""
@@ -210,7 +209,7 @@ else:
         return decorator
 
 
-def _build_control_sheet(book: xw.Book) -> None:
+def _build_control_sheet(book: Any) -> None:
     """Create and populate the Control sheet layout.
 
     Uses direct xlwings calls — no network or module loading needed.
