@@ -266,6 +266,7 @@ def init_workbook(book: xw.Book) -> None:
 
     This is the "easy button". Paste the script, click this, done.
     """
+    print(">>> init_workbook called")
     try:
         _build_control_sheet(book)
         _set_status(book, "Step 1/5: Fetching registry...")
@@ -308,6 +309,7 @@ def init_workbook(book: xw.Book) -> None:
 @script(button="[btn_init]Control!B5")
 def initialize_sheets(book: xw.Book) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
+    print(">>> initialize_sheets called")
     try:
         _set_status(book, "Loading...")
         _get_github_base(book)
@@ -342,6 +344,7 @@ def initialize_sheets(book: xw.Book) -> None:
 @script(button="[btn_generate]Control!B7")
 def generate_document(book: xw.Book) -> None:
     """Read data, validate, build .docx, trigger download."""
+    print(">>> generate_document called")
     try:
         _set_status(book, "Generating document...")
 
@@ -385,6 +388,7 @@ def generate_document(book: xw.Book) -> None:
 @script(button="[btn_validate]Control!B9")
 def validate_data(book: xw.Book) -> None:
     """Run validation only, show results in status area."""
+    print(">>> validate_data called")
     try:
         _set_status(book, "Validating...")
 
@@ -423,6 +427,7 @@ def validate_data(book: xw.Book) -> None:
 @script(button="[btn_export]Control!B11")
 def export_data_yaml(book: xw.Book) -> None:
     """Export data to YAML, write to staging cell."""
+    print(">>> export_data_yaml called")
     try:
         _set_status(book, "Exporting...")
 
@@ -461,6 +466,7 @@ def export_data_yaml(book: xw.Book) -> None:
 @script(button="[btn_import]Control!B13")
 def import_data_yaml(book: xw.Book) -> None:
     """Import YAML data from the staging cell."""
+    print(">>> import_data_yaml called")
     try:
         _set_status(book, "Importing...")
 
@@ -503,6 +509,7 @@ def import_data_yaml(book: xw.Book) -> None:
 @script(button="[btn_llm]Control!B15")
 def generate_llm_prompt(book: xw.Book) -> None:
     """Generate LLM fill-in prompt, write to staging cell."""
+    print(">>> generate_llm_prompt called")
     try:
         _set_status(book, "Generating LLM prompt...")
 
@@ -543,6 +550,7 @@ def generate_llm_prompt(book: xw.Book) -> None:
 @script(button="[btn_load_schema]Control!B17")
 def load_custom_schema(book: xw.Book) -> None:
     """Read YAML from staging cell and register as local schema."""
+    print(">>> load_custom_schema called")
     try:
         _set_status(book, "Loading custom schema...")
 
@@ -569,6 +577,7 @@ def load_custom_schema(book: xw.Book) -> None:
 @script(button="[btn_load_template]Control!B19")
 def load_custom_template(book: xw.Book) -> None:
     """Read Python template source from staging cell."""
+    print(">>> load_custom_template called")
     try:
         _set_status(book, "Loading custom template...")
 

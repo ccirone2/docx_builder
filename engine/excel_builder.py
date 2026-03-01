@@ -16,6 +16,7 @@ from typing import Any
 from engine.config import (
     HEADER_COLOR,
     HEADER_FONT_COLOR,
+    IS_PYODIDE,
     OPTIONAL_BG_COLOR,
     REQUIRED_INDICATOR_COLOR,
 )
@@ -71,16 +72,30 @@ class TablePlan:
 # Sheet name helpers
 # ---------------------------------------------------------------------------
 
+_MAX_SHEET_NAME = 31  # Excel maximum
+
+
+def _truncate_sheet_name(name: str) -> str:
+    """Truncate a sheet name to Excel's 31-character limit.
+
+    Args:
+        name: Proposed sheet name.
+
+    Returns:
+        Name trimmed to 31 characters.
+    """
+    return name[:_MAX_SHEET_NAME]
+
 
 def _group_sheet_name(group_name: str, section: str) -> str:
     """Generate a sheet name for a field group."""
     prefix = "Data" if section == "core" else "Optional"
-    return f"{prefix} - {group_name}"
+    return _truncate_sheet_name(f"{prefix} - {group_name}")
 
 
 def _table_sheet_name(field_label: str) -> str:
     """Generate a sheet name for a table field."""
-    return f"Table - {field_label}"
+    return _truncate_sheet_name(f"Table - {field_label}")
 
 
 # ---------------------------------------------------------------------------
@@ -536,11 +551,17 @@ def build_sheets(book: Any, plan: SheetPlan) -> None:
 def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     """Write a single cell to an xlwings Sheet with formatting.
 
-    Formatting operations are best-effort — xlwings Lite may not
-    support merge, font.bold, .color, row_height, or note.text.
-    Each is wrapped in a broad ``except Exception`` to handle
-    both desktop xlwings errors and xlwings Lite / Office.js errors
-    (e.g. InvalidArgument) that use non-standard exception types.
+    Formatting operations are best-effort.  In xlwings Lite the
+    Office.js bridge batches all operations and syncs them when
+    Python returns.  If any single queued operation is invalid the
+    **entire** batch is rolled back (including value writes).
+    Python ``try/except`` cannot help because the error is raised
+    asynchronously in JavaScript, not in Python.
+
+    Therefore we only attempt operations that are known to succeed
+    in xlwings Lite (merge, bold, fill color, font color) and skip
+    operations that silently poison the Office.js batch
+    (number_format, row_height, note.text) when running in Pyodide.
 
     Args:
         sheet: An xlwings Sheet object.
@@ -577,20 +598,25 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     except Exception:
         pass
 
-    try:
-        if instr.number_format:
-            cell.number_format = instr.number_format
-    except Exception:
-        pass
+    # --- Operations skipped in Pyodide / xlwings Lite ---
+    # These queue invalid Office.js operations that silently poison
+    # the entire batch, causing ALL cell writes to be rolled back.
+    # They are cosmetic and not essential for data entry.
+    if not IS_PYODIDE:
+        try:
+            if instr.number_format:
+                cell.number_format = instr.number_format
+        except Exception:
+            pass
 
-    try:
-        if instr.row_height:
-            cell.row_height = instr.row_height
-    except Exception:
-        pass
+        try:
+            if instr.row_height:
+                cell.row_height = instr.row_height
+        except Exception:
+            pass
 
-    try:
-        if instr.note:
-            cell.note.text = instr.note
-    except Exception:
-        pass
+        try:
+            if instr.note:
+                cell.note.text = instr.note
+        except Exception:
+            pass
