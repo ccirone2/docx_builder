@@ -8,19 +8,42 @@ at runtime. This script is the thin shell that wires everything up.
 
 from __future__ import annotations
 
+import sys
+import types
 from typing import Any
 
 import yaml
 
 # --- Configuration ---
-GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
+GITHUB_BASE = (
+    "https://raw.githubusercontent.com"
+    "/ccirone2/docx_builder/main"
+)
 _cache: dict[str, str] = {}
 _engine: dict[str, dict] = {}
 
-# Status messages
+# Cell addresses on the Control sheet
 STATUS_CELL = "D3"
 SCHEMA_DROPDOWN_CELL = "B3"
 YAML_STAGING_CELL = "D20"
+
+# Module dependency graph (engine modules only)
+_MODULE_DEPS: dict[str, list[str]] = {
+    "config": [],
+    "schema_loader": [],
+    "excel_builder": ["config", "schema_loader"],
+    "data_exchange": ["schema_loader"],
+    "doc_generator": ["schema_loader"],
+    "validation_ux": ["schema_loader"],
+    "file_bridge": [],
+    "github_loader": [],
+}
+
+# Formatting constants (duplicated from engine/config.py so
+# init_workbook can build the Control sheet without a network call)
+_HEADER_COLOR = "#1F4E79"
+_HEADER_FONT = "#FFFFFF"
+_OPTIONAL_BG = "#F2F2F2"
 
 
 # --- Fetch helpers ---
@@ -29,27 +52,36 @@ YAML_STAGING_CELL = "D20"
 def _fetch(path: str) -> str:
     """Fetch a file from GitHub with session caching.
 
+    Uses pyodide.http.open_url in Pyodide, falls back to
+    urllib for standard Python.
+
     Args:
         path: Relative path within the repo.
 
     Returns:
         File contents as string.
-
-    Raises:
-        RuntimeError: If fetch fails.
     """
     url = f"{GITHUB_BASE}/{path}"
     if url not in _cache:
-        import requests
+        try:
+            # Pyodide environment (xlwings Lite)
+            from pyodide.http import open_url  # type: ignore[import-untyped]
 
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
-        _cache[url] = response.text
+            _cache[url] = open_url(url).read()
+        except ImportError:
+            # Standard Python (development / testing)
+            from urllib.request import urlopen
+
+            with urlopen(url, timeout=15) as resp:  # noqa: S310
+                _cache[url] = resp.read().decode()
     return _cache[url]
 
 
 def _load_module(name: str) -> dict:
     """Fetch and execute an engine module from GitHub.
+
+    Loads dependencies first and registers every module in
+    sys.modules so that cross-module imports work.
 
     Args:
         name: Module name (e.g., "schema_loader").
@@ -58,63 +90,46 @@ def _load_module(name: str) -> dict:
         The module's namespace dict.
     """
     if name not in _engine:
+        # Ensure the 'engine' package exists in sys.modules
+        if "engine" not in sys.modules:
+            pkg = types.ModuleType("engine")
+            pkg.__path__ = []  # type: ignore[attr-defined]
+            sys.modules["engine"] = pkg
+
+        # Load dependencies first
+        for dep in _MODULE_DEPS.get(name, []):
+            if dep not in _engine:
+                _load_module(dep)
+
         source = _fetch(f"engine/{name}.py")
-        ns: dict[str, Any] = {"__name__": f"engine.{name}"}
-        exec(source, ns)  # noqa: S102
-        _engine[name] = ns
+        mod = types.ModuleType(f"engine.{name}")
+        sys.modules[f"engine.{name}"] = mod
+        exec(source, mod.__dict__)  # noqa: S102
+        _engine[name] = mod.__dict__
     return _engine[name]
 
 
 def _set_status(book: Any, message: str) -> None:
-    """Write a status message to the Control sheet.
-
-    Args:
-        book: xlwings Book object.
-        message: Status text to display.
-    """
-    control = book.sheets["Control"]
-    control[STATUS_CELL].value = message
+    """Write a status message to the Control sheet."""
+    book.sheets["Control"][STATUS_CELL].value = message
 
 
 def _get_github_base(book: Any) -> str:
-    """Read the GitHub base URL from the Control sheet config area.
-
-    Args:
-        book: xlwings Book object.
-
-    Returns:
-        GitHub base URL string.
-    """
-    control = book.sheets["Control"]
-    custom_url = control["D12"].value
+    """Read custom GitHub URL from Control sheet, or return default."""
+    global GITHUB_BASE  # noqa: PLW0603
+    custom_url = book.sheets["Control"]["D12"].value
     if custom_url and str(custom_url).strip().startswith("http"):
-        return str(custom_url).strip().rstrip("/")
+        GITHUB_BASE = str(custom_url).strip().rstrip("/")
     return GITHUB_BASE
 
 
 def _read_selected_schema(book: Any) -> str | None:
-    """Read the currently selected schema name from the Control sheet.
-
-    Args:
-        book: xlwings Book object.
-
-    Returns:
-        Selected schema name, or None.
-    """
-    control = book.sheets["Control"]
-    return control[SCHEMA_DROPDOWN_CELL].value
+    """Read the currently selected schema name from dropdown."""
+    return book.sheets["Control"][SCHEMA_DROPDOWN_CELL].value
 
 
 def _find_schema_entry(registry: dict, name: str) -> dict | None:
-    """Find a registry entry by display name.
-
-    Args:
-        registry: Parsed registry dict.
-        name: Schema display name.
-
-    Returns:
-        Registry entry dict, or None.
-    """
+    """Find a registry entry by display name."""
     for entry in registry.get("schemas", []):
         if entry["name"] == name:
             return entry
@@ -122,17 +137,8 @@ def _find_schema_entry(registry: dict, name: str) -> dict | None:
 
 
 def _read_data_from_sheets(book: Any, schema: Any) -> dict[str, Any]:
-    """Read user-entered data from the data entry sheets.
-
-    Args:
-        book: xlwings Book object.
-        schema: Parsed Schema object.
-
-    Returns:
-        Dict of {field_key: value}.
-    """
+    """Read user-entered data from the data entry sheets."""
     data: dict[str, Any] = {}
-
     for group in schema.all_groups:
         for field in group.fields:
             if field.is_table:
@@ -141,21 +147,11 @@ def _read_data_from_sheets(book: Any, schema: Any) -> dict[str, Any]:
                 data[field.key] = _read_compound_data(book, field)
             else:
                 data[field.key] = _read_field_value(book, field)
-
     return data
 
 
 def _read_field_value(book: Any, field: Any) -> Any:
-    """Read a single field value from its sheet location.
-
-    Args:
-        book: xlwings Book object.
-        field: FieldDef object.
-
-    Returns:
-        The field value, or None.
-    """
-    # Fields are laid out by the excel_builder, values are in column B/C
+    """Read a single field value from its sheet location."""
     for sheet in book.sheets:
         for row in range(2, 100):
             cell_value = sheet.range((row, 1)).value
@@ -165,15 +161,7 @@ def _read_field_value(book: Any, field: Any) -> Any:
 
 
 def _read_table_data(book: Any, field: Any) -> list[dict]:
-    """Read table data from a dedicated table sheet.
-
-    Args:
-        book: xlwings Book object.
-        field: Table FieldDef object.
-
-    Returns:
-        List of row dicts.
-    """
+    """Read table data from a dedicated table sheet."""
     sheet_name = f"Table - {field.label}"
     if sheet_name not in [s.name for s in book.sheets]:
         return []
@@ -195,15 +183,7 @@ def _read_table_data(book: Any, field: Any) -> list[dict]:
 
 
 def _read_compound_data(book: Any, field: Any) -> dict:
-    """Read compound field data from its group sheet.
-
-    Args:
-        book: xlwings Book object.
-        field: Compound FieldDef object.
-
-    Returns:
-        Dict of sub-field values.
-    """
+    """Read compound field data from its group sheet."""
     result = {}
     for sf in field.sub_fields or []:
         result[sf.key] = _read_field_value(book, sf)
@@ -225,38 +205,74 @@ except ImportError:
         return decorator
 
 
+def _build_control_sheet(book: Any) -> None:
+    """Create and populate the Control sheet layout.
+
+    Uses direct xlwings calls — no network or module loading needed.
+    """
+    sheet_names = [s.name for s in book.sheets]
+    if "Control" not in sheet_names:
+        book.sheets.add("Control")
+    c = book.sheets["Control"]
+
+    # Title banner (A1:F1)
+    c["A1"].value = "DOCUMENT GENERATOR"
+    c.range("A1:F1").merge()
+    c["A1"].font.bold = True
+    c["A1"].color = _HEADER_COLOR
+    c["A1"].font.color = _HEADER_FONT
+
+    # Document Type selector (Row 3)
+    c["A3"].value = "Document Type:"
+    c["A3"].font.bold = True
+    c[STATUS_CELL].value = "Ready"
+
+    # Button labels (column A, next to xlwings button widgets)
+    for row, label in [
+        (5, "Initialize Sheets"),
+        (7, "Generate Document"),
+        (9, "Validate Data"),
+        (11, "Export Data (YAML)"),
+        (13, "Import Data (YAML)"),
+        (15, "Generate LLM Prompt"),
+        (17, "Load Custom Schema"),
+        (19, "Load Custom Template"),
+    ]:
+        c.range((row, 1)).value = label
+        c.range((row, 1)).font.bold = True
+
+    # Configuration section
+    c["C10"].value = "CONFIGURATION"
+    c["C10"].font.bold = True
+    c["C10"].color = _OPTIONAL_BG
+    c["C12"].value = "GitHub Repo URL:"
+    c["D12"].value = GITHUB_BASE
+    c["C16"].value = "Redact on Export:"
+    c["D16"].value = "TRUE"
+
+    # YAML staging area
+    c["C18"].value = "YAML STAGING AREA"
+    c["C18"].font.bold = True
+    c["C18"].color = _OPTIONAL_BG
+
+
 @script(button="[btn_easy_init]Control!D5")
 def init_workbook(book: Any) -> None:
-    """One-click workbook setup: create Control sheet, build layout, fetch schemas.
+    """One-click workbook setup: create Control sheet, fetch schemas, build sheets.
 
-    This is the "easy button". User opens a blank workbook, pastes this
-    script, and clicks Init Workbook. Everything else is created automatically:
-    the Control sheet layout, document-type dropdown, and data entry sheets.
+    This is the "easy button". Paste the script, click this, done.
     """
     try:
-        # Create Control sheet if it doesn't exist
-        sheet_names = [s.name for s in book.sheets]
-        if "Control" not in sheet_names:
-            book.sheets.add("Control")
-
-        _set_status(book, "Setting up workbook...")
-
-        # Build the Control sheet layout
-        builder = _load_module("excel_builder")
-        control_instrs = builder["plan_control_sheet"](github_base=GITHUB_BASE)
-
-        control_sheet = book.sheets["Control"]
-        for instr in control_instrs:
-            builder["apply_cell"](control_sheet, instr)
-
-        # Fetch registry and populate dropdown
+        _build_control_sheet(book)
         _set_status(book, "Fetching schemas...")
+
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         schema_names = [s["name"] for s in registry.get("schemas", [])]
 
+        control = book.sheets["Control"]
         if schema_names:
-            control_sheet[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
+            control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
 
         # Build data entry sheets for the first available schema
         selected = _read_selected_schema(book)
@@ -268,6 +284,7 @@ def init_workbook(book: Any) -> None:
                 loader = _load_module("schema_loader")
                 schema = loader["load_schema_from_text"](schema_yaml)
 
+                builder = _load_module("excel_builder")
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
 
@@ -277,7 +294,7 @@ def init_workbook(book: Any) -> None:
         try:
             _set_status(book, f"Error: {e}")
         except Exception:
-            pass  # Control sheet may not exist yet
+            pass
 
 
 @script(button="[btn_init]Control!B5")
@@ -285,21 +302,17 @@ def initialize_sheets(book: Any) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
     try:
         _set_status(book, "Loading...")
-        _get_github_base(book)  # Reads custom URL if set
+        _get_github_base(book)
 
-        # Fetch registry
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
 
-        # Populate dropdown with schema names
         schema_names = [s["name"] for s in registry.get("schemas", [])]
         control = book.sheets["Control"]
 
-        # Write schema names as a dropdown list
         if schema_names:
             control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
 
-        # If a schema is selected, build its data entry sheets
         selected = _read_selected_schema(book)
         if selected:
             entry = _find_schema_entry(registry, selected)
@@ -337,25 +350,20 @@ def generate_document(book: Any) -> None:
             _set_status(book, f"Error: Schema '{selected}' not found")
             return
 
-        # Load schema
         schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
         loader = _load_module("schema_loader")
         schema = loader["load_schema_from_text"](schema_yaml)
 
-        # Read data from sheets
         data = _read_data_from_sheets(book, schema)
 
-        # Validate
         result = loader["validate_data"](schema, data)
         if not result.valid:
             _set_status(book, f"Validation failed: {len(result.errors)} errors")
             return
 
-        # Generate document
         doc_gen = _load_module("doc_generator")
         doc = doc_gen["generate_document"](schema, data)
 
-        # Trigger download
         bridge = _load_module("file_bridge")
         filename = f"{entry['id']}.docx"
         bridge["trigger_docx_download"](doc, filename)
@@ -429,14 +437,12 @@ def export_data_yaml(book: Any) -> None:
 
         data = _read_data_from_sheets(book, schema)
 
-        # Check if redaction is enabled
         control = book.sheets["Control"]
         redact = bool(control["D16"].value)
 
         exchange = _load_module("data_exchange")
         yaml_output = exchange["export_snapshot"](schema, data, redact=redact)
 
-        # Write to staging cell
         control[YAML_STAGING_CELL].value = yaml_output
         _set_status(book, "Data exported to YAML (see staging cell)")
 
@@ -477,8 +483,6 @@ def import_data_yaml(book: Any) -> None:
         exchange = _load_module("data_exchange")
         data, warnings = exchange["import_snapshot"](schema, str(yaml_text))
 
-        # Write imported data back to sheets
-        # (simplified: write to staging cell for now)
         if warnings:
             _set_status(book, f"Imported with {len(warnings)} warnings")
         else:
@@ -567,7 +571,6 @@ def load_custom_template(book: Any) -> None:
             _set_status(book, "Error: No template source in staging cell")
             return
 
-        # Validate the template has a build_document function
         gh_loader = _load_module("github_loader")
         builder = gh_loader["load_template_builder"](str(source))
 
