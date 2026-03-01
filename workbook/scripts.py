@@ -268,12 +268,13 @@ def init_workbook(book: xw.Book) -> None:
     """
     try:
         _build_control_sheet(book)
-        _set_status(book, "Fetching schemas...")
+        _set_status(book, "Step 1/5: Fetching registry...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         schema_names = [s["name"] for s in registry.get("schemas", [])]
 
+        _set_status(book, f"Step 2/5: Found {len(schema_names)} schemas")
         control = book.sheets["Control"]
         if schema_names:
             control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
@@ -283,11 +284,14 @@ def init_workbook(book: xw.Book) -> None:
         if selected:
             entry = _find_schema_entry(registry, selected)
             if entry:
-                _set_status(book, f"Building sheets for {entry['name']}...")
+                _set_status(book, f"Step 3/5: Fetching {entry['name']}...")
                 schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
+
+                _set_status(book, "Step 4/5: Loading engine modules...")
                 loader = _load_module("schema_loader")
                 schema = loader["load_schema_from_text"](schema_yaml)
 
+                _set_status(book, "Step 5/5: Building sheets...")
                 builder = _load_module("excel_builder")
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
@@ -296,7 +300,7 @@ def init_workbook(book: xw.Book) -> None:
 
     except Exception as e:
         try:
-            _set_status(book, f"Error: {e}")
+            _set_status(book, f"Error [{type(e).__name__}]: {e}")
         except Exception:
             pass
 
@@ -332,7 +336,7 @@ def initialize_sheets(book: xw.Book) -> None:
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_generate]Control!B7")
@@ -375,7 +379,7 @@ def generate_document(book: xw.Book) -> None:
         _set_status(book, f"Document generated: {filename}")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_validate]Control!B9")
@@ -413,7 +417,7 @@ def validate_data(book: xw.Book) -> None:
             _set_status(book, f"Validation failed: {len(result.errors)} errors")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_export]Control!B11")
@@ -451,7 +455,7 @@ def export_data_yaml(book: xw.Book) -> None:
         _set_status(book, "Data exported to YAML (see staging cell)")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_import]Control!B13")
@@ -493,7 +497,7 @@ def import_data_yaml(book: xw.Book) -> None:
             _set_status(book, f"Data imported successfully ({len(data)} fields)")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_llm]Control!B15")
@@ -533,7 +537,7 @@ def generate_llm_prompt(book: xw.Book) -> None:
         _set_status(book, "LLM prompt generated (see staging cell)")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_load_schema]Control!B17")
@@ -559,7 +563,7 @@ def load_custom_schema(book: xw.Book) -> None:
         _set_status(book, f"Custom schema loaded: {entry.name}")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_load_template]Control!B19")
@@ -585,4 +589,4 @@ def load_custom_template(book: xw.Book) -> None:
         _set_status(book, "Custom template loaded successfully")
 
     except Exception as e:
-        _set_status(book, f"Error: {e}")
+        _set_status(book, f"Error [{type(e).__name__}]: {e}")
