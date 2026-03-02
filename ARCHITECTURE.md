@@ -118,7 +118,7 @@ docgen/
 │   ├── SCHEMA_AUTHORING.md             # How to write a new schema
 │   └── USER_GUIDE.md                   # End-user documentation
 │
-└── tests/                              # Schema + engine tests (96+ tests)
+└── tests/                              # Schema + engine tests (99 tests)
     ├── conftest.py                     # Shared fixtures
     ├── test_schema_loader.py
     ├── test_data_exchange.py           # YAML import/export, redaction (LLM fns → llm_helpers)

@@ -23,9 +23,9 @@
 
 ### Test Summary
 
-- 96 tests across 10 test files (+ conftest.py)
+- 99 tests across 10 test files (+ conftest.py)
 - All passing, lint clean
-- Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux, config, integration
+- Coverage: schema_loader, data_exchange, llm_helpers, github_loader, excel_plan, excel_control, excel_writer, doc_generator, file_bridge, validation_ux, config, integration
 
 ### Maintenance
 
