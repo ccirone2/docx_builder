@@ -283,6 +283,7 @@ def _build_control_sheet(book: Any) -> None:
 
 def init_workbook(book: Any) -> None:
     """One-click workbook setup: create Control sheet, fetch schemas, build sheets."""
+    _set_status(book, "init_workbook triggered")
     try:
         _build_control_sheet(book)
         _get_github_base(book)
@@ -331,6 +332,7 @@ def _report_error(book: Any, exc: Exception) -> None:
 
 def initialize_sheets(book: Any) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
+    _set_status(book, "initialize_sheets triggered")
     try:
         _set_status(book, "Loading...")
         _get_github_base(book)
@@ -364,6 +366,7 @@ def initialize_sheets(book: Any) -> None:
 
 def generate_document(book: Any) -> None:
     """Read data, validate, build .docx, trigger download."""
+    _set_status(book, "generate_document triggered")
     try:
         _set_status(book, "Generating document...")
 
@@ -406,6 +409,7 @@ def generate_document(book: Any) -> None:
 
 def validate_data(book: Any) -> None:
     """Run validation only, show results in status area."""
+    _set_status(book, "validate_data triggered")
     try:
         _set_status(book, "Validating...")
 
@@ -443,6 +447,7 @@ def validate_data(book: Any) -> None:
 
 def export_data_yaml(book: Any) -> None:
     """Export data to YAML, write to staging cell."""
+    _set_status(book, "export_data_yaml triggered")
     try:
         _set_status(book, "Exporting...")
 
@@ -480,6 +485,7 @@ def export_data_yaml(book: Any) -> None:
 
 def import_data_yaml(book: Any) -> None:
     """Import YAML data from the staging cell."""
+    _set_status(book, "import_data_yaml triggered")
     try:
         _set_status(book, "Importing...")
 
@@ -521,6 +527,7 @@ def import_data_yaml(book: Any) -> None:
 
 def generate_llm_prompt(book: Any) -> None:
     """Generate LLM fill-in prompt, write to staging cell."""
+    _set_status(book, "generate_llm_prompt triggered")
     try:
         _set_status(book, "Generating LLM prompt...")
 
@@ -560,6 +567,7 @@ def generate_llm_prompt(book: Any) -> None:
 
 def load_custom_schema(book: Any) -> None:
     """Read YAML from staging cell and register as local schema."""
+    _set_status(book, "load_custom_schema triggered")
     try:
         _set_status(book, "Loading custom schema...")
 
@@ -585,6 +593,7 @@ def load_custom_schema(book: Any) -> None:
 
 def load_custom_template(book: Any) -> None:
     """Read Python template source from staging cell."""
+    _set_status(book, "load_custom_template triggered")
     try:
         _set_status(book, "Loading custom template...")
 
