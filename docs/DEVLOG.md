@@ -146,3 +146,38 @@ Verified all documentation against current codebase and PRs. Fixed:
   reference engine.log helpers.
 - **BOOTSTRAP_PROMPT.md**: Added historical context note.
 - **DEVLOG.md**: Added entries for PR #4 changes and this audit.
+
+## 2026-03-02 — Workbook Script Cleanup
+
+Removed stale code, simplified repo configuration, and improved
+runtime feedback in the workbook scripts.
+
+### scripts.py Removed
+- Deleted `workbook/scripts.py` (593 lines). This was a self-contained
+  alternative to the loader/runner architecture, but was never kept in
+  sync and duplicated all logic. The loader/runner pair is the sole
+  supported approach going forward.
+- Removed all references to scripts.py from ARCHITECTURE.md and
+  workbook/README.md.
+
+### D12 Cell Override Removed
+- Removed `_get_github_base()` from runner.py and `_resolve_base()` /
+  `_invalidate_runner()` from loader.py. These read a custom GitHub
+  URL from Control!D12 at every function call.
+- Repo and branch are now configured exclusively via `GITHUB_REPO`
+  and `GITHUB_BRANCH` constants in loader.py. Users click
+  **Reload Scripts** after changing them.
+- Removed the D12 config row from the Control sheet layout built
+  by `_build_control_sheet()`.
+- Updated ARCHITECTURE.md (Mechanism C, Configuration section) and
+  workbook/README.md to match.
+
+### Triggered Status Messages
+- Added `_set_status(book, "<function_name> triggered")` as the first
+  line of all 9 public runner functions, before the try block. This
+  gives immediate feedback in the xlwings output pane when a button
+  is clicked.
+
+**Files deleted:** workbook/scripts.py
+**Files modified:** workbook/runner.py, workbook/loader.py,
+  workbook/README.md, ARCHITECTURE.md, docs/DECISIONS.md

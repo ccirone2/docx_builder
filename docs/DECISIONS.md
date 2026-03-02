@@ -57,3 +57,20 @@ and only runs in xlwings Lite runtime.
 on network failure, plus bundled schemas as last resort.
 **Consequences:** Users get fresh schemas within 5 minutes. Network failures
 degrade gracefully to cached or bundled content.
+
+## ADR-009: Repo Config in Loader Constants, Not Cell D12
+**Date:** 2026-03-02
+**Context:** Both loader.py and runner.py read a custom GitHub URL from
+Control!D12 on every function call. This created two sources of truth
+(loader constants vs. cell value), added fragile cell-reading code, and
+meant the runner re-checked the cell even when the loader had already
+resolved the URL. Users who changed D12 mid-session could get into
+inconsistent states.
+**Decision:** Remove all D12 reading. Repo and branch are configured
+exclusively via `GITHUB_REPO` and `GITHUB_BRANCH` constants at the top
+of loader.py. The loader propagates its `GITHUB_BASE` to the runner on
+every call. Users click **Reload Scripts** after changing the constants.
+**Consequences:** Single source of truth for repo config. Simpler code
+(deleted `_get_github_base`, `_resolve_base`, `_invalidate_runner`).
+Changing repos requires editing loader.py rather than a cell, but this
+matches the intended use case (fork contributors, not casual users).
