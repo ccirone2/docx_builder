@@ -18,6 +18,8 @@ import io
 import sys
 from typing import Any
 
+from engine import log
+
 
 def is_pyodide() -> bool:
     """Check if we're running inside Pyodide (WebAssembly)."""
@@ -46,7 +48,7 @@ def trigger_docx_download(doc, filename: str = "document.docx"):
         # Fallback: save to local filesystem (for development/testing)
         with open(filename, "wb") as f:
             f.write(byte_data)
-        print(f"Saved to {filename}")
+        log.info(f"Saved to {filename}")
 
 
 def trigger_bytes_download(data: bytes, filename: str, mime_type: str = "application/octet-stream"):
@@ -58,7 +60,7 @@ def trigger_bytes_download(data: bytes, filename: str, mime_type: str = "applica
     else:
         with open(filename, "wb") as f:
             f.write(data)
-        print(f"Saved to {filename}")
+        log.info(f"Saved to {filename}")
 
 
 def _browser_download(data: bytes, filename: str, mime_type: str):
@@ -91,14 +93,14 @@ def _browser_download(data: bytes, filename: str, mime_type: str):
         js_doc.body.removeChild(a)
         URL.revokeObjectURL(url)
 
-        print(f"Download triggered: {filename}")
+        log.info(f"Download triggered: {filename}")
 
     except ImportError:
         # If JS bridge isn't available, fall back to base64 approach
-        print("Warning: JS bridge not available. Using base64 fallback.")
+        log.warn("JS bridge not available. Using base64 fallback.")
         b64 = base64.b64encode(data).decode("ascii")
-        print(f"Base64 data ({len(data)} bytes) for {filename}:")
-        print(f"data:{mime_type};base64,{b64[:100]}...")
+        log.debug(f"Base64 data ({len(data)} bytes) for {filename}:")
+        log.debug(f"data:{mime_type};base64,{b64[:100]}...")
 
 
 def save_docx_local(doc: Any, filename: str) -> bytes:

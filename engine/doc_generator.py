@@ -21,6 +21,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
+from engine import log
 from engine.schema_loader import FieldDef, Schema
 
 # ---------------------------------------------------------------------------
@@ -501,4 +502,4 @@ if __name__ == "__main__":
     doc = generate_document(schema, sample_data)
     buf = io.BytesIO()
     doc.save(buf)
-    print(f"Generated document: {buf.tell()} bytes")
+    log.info(f"Generated document: {buf.tell()} bytes")

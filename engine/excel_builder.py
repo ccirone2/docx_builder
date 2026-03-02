@@ -16,10 +16,16 @@ from typing import Any
 from engine.config import (
     HEADER_COLOR,
     HEADER_FONT_COLOR,
+    IS_PYODIDE,
     OPTIONAL_BG_COLOR,
     REQUIRED_INDICATOR_COLOR,
 )
 from engine.schema_loader import FieldDef, Schema
+
+# --- Default GitHub base URL (used by plan_control_sheet) ---
+_DEFAULT_GITHUB_BASE = (
+    "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
+)
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -60,23 +66,36 @@ class TablePlan:
     sheet: str
     headers: list[CellInstruction]
     default_rows: list[list[CellInstruction]]
-    column_widths: list[int]
 
 
 # ---------------------------------------------------------------------------
 # Sheet name helpers
 # ---------------------------------------------------------------------------
 
+_MAX_SHEET_NAME = 31  # Excel maximum
+
+
+def _truncate_sheet_name(name: str) -> str:
+    """Truncate a sheet name to Excel's 31-character limit.
+
+    Args:
+        name: Proposed sheet name.
+
+    Returns:
+        Name trimmed to 31 characters.
+    """
+    return name[:_MAX_SHEET_NAME]
+
 
 def _group_sheet_name(group_name: str, section: str) -> str:
     """Generate a sheet name for a field group."""
     prefix = "Data" if section == "core" else "Optional"
-    return f"{prefix} - {group_name}"
+    return _truncate_sheet_name(f"{prefix} - {group_name}")
 
 
 def _table_sheet_name(field_label: str) -> str:
     """Generate a sheet name for a table field."""
-    return f"Table - {field_label}"
+    return _truncate_sheet_name(f"Table - {field_label}")
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +160,126 @@ def plan_sheets(schema: Schema) -> SheetPlan:
                         instructions.extend(row)
 
     return SheetPlan(sheets=sheets, instructions=instructions)
+
+
+# ---------------------------------------------------------------------------
+# Pure logic layer — plan_control_sheet
+# ---------------------------------------------------------------------------
+
+
+def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
+    """Compute cell instructions for the Control sheet layout.
+
+    Creates the full Control sheet with title, document-type selector,
+    status area, configuration section, and YAML staging area. This
+    is the "easy button" — call once to scaffold the entire UI.
+
+    Args:
+        github_base: GitHub raw content URL for the config area.
+            Defaults to the project's public repo URL.
+
+    Returns:
+        List of CellInstruction for the Control sheet.
+    """
+    sheet = "Control"
+    url = github_base or _DEFAULT_GITHUB_BASE
+    instrs: list[CellInstruction] = []
+
+    # --- Title banner (Row 1, A1:F1) ---
+    instrs.append(
+        CellInstruction(
+            sheet=sheet,
+            row=1,
+            col=1,
+            value="DOCUMENT GENERATOR",
+            bold=True,
+            bg_color=HEADER_COLOR,
+            font_color=HEADER_FONT_COLOR,
+            merge_cols=6,
+            is_header=True,
+        )
+    )
+
+    # --- Row 3: Document Type selector + status ---
+    instrs.append(
+        CellInstruction(
+            sheet=sheet, row=3, col=1, value="Document Type:", bold=True,
+        )
+    )
+    # B3: dropdown cell (populated later by initialize_sheets)
+    instrs.append(
+        CellInstruction(sheet=sheet, row=3, col=2, value="")
+    )
+
+    # --- Button label rows (A column, next to xlwings button widgets) ---
+    button_labels = [
+        (5, "Initialize Sheets"),
+        (7, "Generate Document"),
+        (9, "Validate Data"),
+        (11, "Export Data (YAML)"),
+        (13, "Import Data (YAML)"),
+        (15, "Generate LLM Prompt"),
+        (17, "Load Custom Schema"),
+        (19, "Load Custom Template"),
+    ]
+    for row, label in button_labels:
+        instrs.append(
+            CellInstruction(
+                sheet=sheet, row=row, col=1, value=label, bold=True,
+            )
+        )
+
+    # --- Configuration section (Row 10+) ---
+    instrs.append(
+        CellInstruction(
+            sheet=sheet,
+            row=10,
+            col=3,
+            value="CONFIGURATION",
+            bold=True,
+            bg_color=OPTIONAL_BG_COLOR,
+            merge_cols=2,
+        )
+    )
+    instrs.append(
+        CellInstruction(
+            sheet=sheet, row=12, col=3, value="GitHub Repo URL:",
+        )
+    )
+    instrs.append(
+        CellInstruction(sheet=sheet, row=12, col=4, value=url)
+    )
+
+    # --- Redact toggle (Row 16) ---
+    instrs.append(
+        CellInstruction(
+            sheet=sheet, row=16, col=3, value="Redact on Export:",
+        )
+    )
+    instrs.append(
+        CellInstruction(
+            sheet=sheet,
+            row=16,
+            col=4,
+            value="TRUE",
+            dropdown_choices=["TRUE", "FALSE"],
+        )
+    )
+
+    # --- YAML staging section (Row 18+) ---
+    instrs.append(
+        CellInstruction(
+            sheet=sheet,
+            row=18,
+            col=3,
+            value="YAML STAGING AREA",
+            bold=True,
+            bg_color=OPTIONAL_BG_COLOR,
+            merge_cols=2,
+        )
+    )
+
+    return instrs
 
 
 # ---------------------------------------------------------------------------
@@ -312,18 +451,13 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
         sheet_name: Target sheet name.
 
     Returns:
-        TablePlan with headers, default rows, and column widths.
+        TablePlan with headers and default rows.
     """
     columns = field.columns or []
     headers: list[CellInstruction] = []
-    column_widths: list[int] = []
 
     # Header row
     for col_idx, col in enumerate(columns, start=1):
-        number_format = ""
-        if col.get("type") in ("currency",):
-            number_format = "$#,##0.00"
-
         headers.append(
             CellInstruction(
                 sheet=sheet_name,
@@ -336,15 +470,6 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
                 is_header=True,
             )
         )
-
-        # Width hint based on type
-        col_type = col.get("type", "text")
-        if col_type in ("currency", "number"):
-            column_widths.append(15)
-        elif col_type == "boolean":
-            column_widths.append(12)
-        else:
-            column_widths.append(25)
 
     # Default rows
     default_rows: list[list[CellInstruction]] = []
@@ -371,7 +496,6 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
         sheet=sheet_name,
         headers=headers,
         default_rows=default_rows,
-        column_widths=column_widths,
     )
 
 
@@ -383,6 +507,9 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
 def build_sheets(book: Any, plan: SheetPlan) -> None:
     """Create sheets and write all cell instructions to an xlwings Book.
 
+    Each cell write is individually guarded so that one failure does
+    not prevent the remaining cells from being written.
+
     Args:
         book: An xlwings Book object.
         plan: The SheetPlan to execute.
@@ -392,12 +519,25 @@ def build_sheets(book: Any, plan: SheetPlan) -> None:
             book.sheets.add(sheet_name)
 
     for instr in plan.instructions:
-        sheet = book.sheets[instr.sheet]
-        apply_cell(sheet, instr)
+        try:
+            sheet = book.sheets[instr.sheet]
+            apply_cell(sheet, instr)
+        except Exception:
+            pass
 
 
 def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     """Write a single cell to an xlwings Sheet with formatting.
+
+    In xlwings Lite the Office.js bridge batches all operations and
+    syncs them when Python returns.  If any single queued operation
+    is invalid the **entire** batch is rolled back — including value
+    writes.  Python ``try/except`` cannot catch these because the
+    error is raised asynchronously in JavaScript, not in Python.
+
+    In Pyodide mode we therefore write **values only** and skip all
+    formatting to avoid poisoning the batch.  Formatting operations
+    are applied only when running in desktop xlwings.
 
     Args:
         sheet: An xlwings Sheet object.
@@ -406,22 +546,44 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     cell = sheet.range((instr.row, instr.col))
     cell.value = instr.value
 
-    if instr.merge_cols > 1:
-        merge_range = sheet.range(
-            (instr.row, instr.col),
-            (instr.row, instr.col + instr.merge_cols - 1),
-        )
-        merge_range.merge()
+    # In Pyodide / xlwings Lite, skip ALL formatting to prevent
+    # invalid Office.js operations from rolling back value writes.
+    if IS_PYODIDE:
+        return
 
-    if instr.bold:
-        cell.font.bold = True
-    if instr.bg_color:
-        cell.color = instr.bg_color
-    if instr.font_color:
-        cell.font.color = instr.font_color
-    if instr.number_format:
-        cell.number_format = instr.number_format
-    if instr.row_height:
-        cell.row_height = instr.row_height
-    if instr.note:
-        cell.note.text = instr.note
+    # --- Desktop xlwings formatting (best-effort) ---
+    try:
+        if instr.bold:
+            cell.font.bold = True
+    except Exception:
+        pass
+
+    try:
+        if instr.bg_color:
+            cell.color = instr.bg_color
+    except Exception:
+        pass
+
+    try:
+        if instr.font_color:
+            cell.font.color = instr.font_color
+    except Exception:
+        pass
+
+    try:
+        if instr.number_format:
+            cell.number_format = instr.number_format
+    except Exception:
+        pass
+
+    try:
+        if instr.row_height:
+            cell.row_height = instr.row_height
+    except Exception:
+        pass
+
+    try:
+        if instr.note:
+            cell.note.text = instr.note
+    except Exception:
+        pass

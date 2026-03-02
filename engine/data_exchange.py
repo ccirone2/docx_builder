@@ -19,6 +19,7 @@ from typing import Any
 
 import yaml
 
+from engine import log
 from engine.schema_loader import FieldDef, FieldGroup, Schema
 
 # ---------------------------------------------------------------------------
@@ -688,19 +689,19 @@ if __name__ == "__main__":
         ],
     }
 
-    print("=" * 70)
-    print("1. EXPORT — NO REDACTION (full data)")
-    print("=" * 70)
-    print(export_snapshot(schema, sample_data, redact=False))
+    log.info("=" * 70)
+    log.info("1. EXPORT — NO REDACTION (full data)")
+    log.info("=" * 70)
+    log.info(export_snapshot(schema, sample_data, redact=False))
 
-    print("=" * 70)
-    print("2. EXPORT — WITH REDACTION (safe for LLM)")
-    print("=" * 70)
-    print(export_snapshot(schema, sample_data, redact=True))
+    log.info("=" * 70)
+    log.info("2. EXPORT — WITH REDACTION (safe for LLM)")
+    log.info("=" * 70)
+    log.info(export_snapshot(schema, sample_data, redact=True))
 
-    print("=" * 70)
-    print("3. LLM PROMPT — WITH REDACTION (default)")
-    print("=" * 70)
+    log.info("=" * 70)
+    log.info("3. LLM PROMPT — WITH REDACTION (default)")
+    log.info("=" * 70)
     prompt = generate_llm_prompt(
         schema,
         existing_data=sample_data,
@@ -732,12 +733,12 @@ if __name__ == "__main__":
                 "redacted",
             ]
         ):
-            print(line)
+            log.info(line)
 
-    print()
-    print("=" * 70)
-    print("4. ROUND-TRIP: import redacted export (redacted fields become None)")
-    print("=" * 70)
+    log.info("")
+    log.info("=" * 70)
+    log.info("4. ROUND-TRIP: import redacted export (redacted fields become None)")
+    log.info("=" * 70)
     redacted_yaml = export_snapshot(schema, sample_data, redact=True)
     imported, warnings = import_snapshot(schema, redacted_yaml)
     for key in [
@@ -748,29 +749,28 @@ if __name__ == "__main__":
         "project_location",
         "submission_address",
     ]:
-        print(f"  {key}: {imported.get(key)}")
-    print(
-        "  (redacted fields correctly returned as None ✓)"
-        if imported.get("issuer_name") is None
-        else "  ERROR: redacted data leaked!"
-    )
+        log.info(f"  {key}: {imported.get(key)}")
+    if imported.get("issuer_name") is None:
+        log.info("  (redacted fields correctly returned as None ✓)")
+    else:
+        log.error("  redacted data leaked!")
 
-    print()
-    print("=" * 70)
-    print("5. COMPOUND FIELD ROUND-TRIP")
-    print("=" * 70)
+    log.info("")
+    log.info("=" * 70)
+    log.info("5. COMPOUND FIELD ROUND-TRIP")
+    log.info("=" * 70)
     full_yaml = export_snapshot(schema, sample_data, redact=False)
     imported_full, _ = import_snapshot(schema, full_yaml)
     safety = imported_full.get("safety_requirements", {})
-    print(f"  safety_requirements type: {type(safety).__name__}")
+    log.info(f"  safety_requirements type: {type(safety).__name__}")
     for sk, sv in safety.items():
         display = (sv[:50] + "...") if isinstance(sv, str) and len(sv) > 50 else sv
-        print(f"    .{sk}: {display}")
+        log.info(f"    .{sk}: {display}")
 
-    print()
-    print("=" * 70)
-    print("6. SCHEMA REFERENCE (showing compound)")
-    print("=" * 70)
+    log.info("")
+    log.info("=" * 70)
+    log.info("6. SCHEMA REFERENCE (showing compound)")
+    log.info("=" * 70)
     ref = generate_schema_reference(schema)
     for line in ref.splitlines():
         keywords = [
@@ -786,4 +786,4 @@ if __name__ == "__main__":
             "Additional Provisions",
         ]
         if any(kw in line.lower() if kw[0] != "." else kw in line for kw in keywords):
-            print(line)
+            log.info(line)

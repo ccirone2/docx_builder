@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 
+from engine import log
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -376,27 +378,25 @@ if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else "schemas/rfq_electric_utility.yaml"
     schema = load_schema(path)
 
-    print(f"Schema: {schema.name} (v{schema.version})")
-    print(f"Template: {schema.template}")
-    print(f"Core groups: {len(schema.core_groups)}")
-    print(f"Optional groups: {len(schema.optional_groups)}")
-    print(f"Total fields: {len(schema.all_fields)}")
-    print(f"Required fields: {len(schema.get_required_fields())}")
-    print(f"Table fields: {len(schema.get_table_fields())}")
-    print(f"Compound fields: {len(schema.get_compound_fields())}")
-    print(f"Flexible fields enabled: {schema.flexible.enabled}")
-    print()
+    log.info(f"Schema: {schema.name} (v{schema.version})")
+    log.info(f"Template: {schema.template}")
+    log.info(f"Core groups: {len(schema.core_groups)}")
+    log.info(f"Optional groups: {len(schema.optional_groups)}")
+    log.info(f"Total fields: {len(schema.all_fields)}")
+    log.info(f"Required fields: {len(schema.get_required_fields())}")
+    log.info(f"Table fields: {len(schema.get_table_fields())}")
+    log.info(f"Compound fields: {len(schema.get_compound_fields())}")
+    log.info(f"Flexible fields enabled: {schema.flexible.enabled}")
 
     for g in schema.all_groups:
-        print(f"[{g.section.upper()}] {g.name}")
+        log.info(f"[{g.section.upper()}] {g.name}")
         for f in g.fields:
             req = "✱" if f.required else " "
             redact_icon = " 🔒" if f.redact else ""
             cond = f" (if {f.conditional_on['field']})" if f.conditional_on else ""
-            print(f"  {req} {f.key}: {f.type}{redact_icon}{cond}")
+            log.info(f"  {req} {f.key}: {f.type}{redact_icon}{cond}")
             if f.is_compound and f.sub_fields:
                 for sf in f.sub_fields:
                     sreq = "✱" if sf.required else " "
                     sredact = " 🔒" if sf.redact else ""
-                    print(f"      {sreq} .{sf.key}: {sf.type}{sredact}")
-        print()
+                    log.info(f"      {sreq} .{sf.key}: {sf.type}{sredact}")
