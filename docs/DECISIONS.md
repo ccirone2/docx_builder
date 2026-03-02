@@ -74,3 +74,16 @@ every call. Users click **Reload Scripts** after changing the constants.
 (deleted `_get_github_base`, `_resolve_base`, `_invalidate_runner`).
 Changing repos requires editing loader.py rather than a cell, but this
 matches the intended use case (fork contributors, not casual users).
+
+## ADR-010: Local Development Harness with MockBook
+**Date:** 2026-03-02
+**Context:** Need Claude Code to run the engine pipeline locally and verify
+workbook initialization without Pyodide or browser Excel. The engine has a
+clean two-layer design (pure logic vs. xlwings adapter), but workbook/runner.py
+can't be imported locally because it uses pyodide.http for fetching.
+**Decision:** Create dev/ package with MockBook (in-memory xlwings mock),
+local_runner.py (direct engine imports), and harness.py (CLI). Desktop
+xlwings is an optional backend for real Excel control.
+**Consequences:** Fast feedback loop with zero external deps (mock mode).
+Real Excel testing available when xlwings is installed. Sample data shared
+between test fixtures and harness via dev/sample_data.py.

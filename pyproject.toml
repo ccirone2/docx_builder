@@ -15,7 +15,11 @@ dev = [
     "pytest",
     "ruff",
     "pyright",
+    "xlwings",
 ]
+
+[tool.setuptools.packages.find]
+include = ["engine*", "dev*"]
 
 [tool.ruff]
 target-version = "py311"
