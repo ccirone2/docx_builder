@@ -372,6 +372,54 @@ def _report_error(book: Any, exc: Exception) -> None:
     _set_status(book, f"Error [{type(exc).__name__}]: {msg}")
 
 
+def _format_validation_line(message: str) -> str:
+    """Convert a raw validation error/warning into a compact one-liner.
+
+    Input formats from schema_loader:
+        "Missing required field: Project Title (project_title)"
+        "Missing required sub-field: Address → City (address.city)"
+        "Field Label: Expected date format YYYY-MM-DD, got 'val'"
+
+    Returns:
+        Compact string like "Project Title: missing" or
+        "Field Label: invalid date format".
+    """
+    # "Missing required field: Label (key)" or "Missing required sub-field: ..."
+    if message.startswith("Missing required"):
+        # Extract the label between the first ": " and the last " ("
+        colon_idx = message.index(": ") + 2
+        paren_idx = message.rfind(" (")
+        label = message[colon_idx:paren_idx] if paren_idx > colon_idx else message[colon_idx:]
+        return f"  - {label}: missing"
+
+    # "Label: detail message" — keep label, shorten detail
+    if ": " in message:
+        label, detail = message.split(": ", 1)
+        # Truncate long detail messages
+        if len(detail) > 60:
+            detail = detail[:57] + "..."
+        return f"  - {label}: {detail}"
+
+    return f"  - {message}"
+
+
+def _report_validation(book: Any, validation: Any) -> None:
+    """Print a compact summary + per-item detail for validation results.
+
+    Args:
+        book: The xlwings Book object (passed to _set_status).
+        validation: A ValidationResult with .errors and .warnings lists.
+    """
+    if validation.errors:
+        _set_status(book, f"Validation failed: {len(validation.errors)} errors")
+        for err in validation.errors:
+            _set_status(book, _format_validation_line(err))
+    if validation.warnings:
+        _set_status(book, f"Validation warnings: {len(validation.warnings)}")
+        for warn in validation.warnings:
+            _set_status(book, f"Warning: {_format_validation_line(warn)}")
+
+
 def initialize_sheets(book: Any) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
     _set_status(book, "initialize_sheets triggered")
@@ -420,7 +468,7 @@ def generate_document(book: Any) -> None:
         loader = _load_module("schema_loader")
         validation = loader["validate_data"](schema, data)
         if not validation.valid:
-            _set_status(book, f"Validation failed: {len(validation.errors)} errors")
+            _report_validation(book, validation)
             return
         doc_gen = _load_module("doc_generator")
         doc = doc_gen["generate_document"](schema, data)
@@ -449,8 +497,10 @@ def validate_data(book: Any) -> None:
             if validation.warnings:
                 msg += f" ({len(validation.warnings)} warnings)"
             _set_status(book, msg)
+            if validation.warnings:
+                _report_validation(book, validation)
         else:
-            _set_status(book, f"Validation failed: {len(validation.errors)} errors")
+            _report_validation(book, validation)
     except Exception as e:
         _report_error(book, e)
 

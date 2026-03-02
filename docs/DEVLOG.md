@@ -409,3 +409,28 @@ across the remaining docs.
 **Files deleted:** docs/plan.md, docs/BOOTSTRAP_PROMPT.md, docs/DEV_INFRASTRUCTURE.md
 **Files modified:** docs/CONTRIBUTING.md, docs/USER_GUIDE.md,
   docs/SCHEMA_AUTHORING.md, docs/PLAN.md, CLAUDE.md
+
+## 2026-03-02 — Issue #10: Validation error detail in output pane
+
+Implemented [#10](https://github.com/ccirone2/docx_builder/issues/10).
+When `validate_data` or `generate_document` fails validation, the output
+pane now prints each error and warning on its own line in a compact format:
+
+```
+[17:45:50] ERROR  Validation failed: 17 errors
+[17:45:50] ERROR    - Project Title: missing
+[17:45:50] ERROR    - Utility Name: missing
+```
+
+### Changes
+- `workbook/runner.py`: Added `_format_validation_line()` to condense raw
+  error strings (e.g. "Missing required field: Label (key)") into compact
+  one-liners ("Label: missing"). Added `_report_validation()` to print
+  summary + per-item detail. Wired into both `validate_data()` and
+  `generate_document()`.
+- `tests/test_runner.py`: 11 new tests covering `_format_validation_line`
+  (7 cases) and `_report_validation` (4 cases).
+
+**Files created:** tests/test_runner.py
+**Files modified:** workbook/runner.py, docs/DEVLOG.md
+**Test count:** 160 tests across 13 files (up from 149)
