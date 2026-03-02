@@ -128,17 +128,6 @@ def _set_status(book: Any, message: str) -> None:
     print(f"[{stamp}] {level}  {message}")  # noqa: T201
 
 
-def _get_github_base(book: Any) -> str:
-    """Read custom GitHub URL from Control!D12, or return default."""
-    global GITHUB_BASE  # noqa: PLW0603
-    try:
-        custom_url = book.sheets["Control"]["D12"].value
-        if custom_url and str(custom_url).strip().startswith("http"):
-            GITHUB_BASE = str(custom_url).strip().rstrip("/")
-    except Exception:
-        pass
-    return GITHUB_BASE
-
 
 def _read_selected_schema(book: Any) -> str | None:
     """Read the currently selected schema name from dropdown."""
@@ -268,8 +257,6 @@ def _build_control_sheet(book: Any) -> None:
     # Configuration section
     c["C10"].value = "CONFIGURATION"
     _fmt(c["C10"], bold=True, color=_OPTIONAL_BG)
-    c["C12"].value = "GitHub Repo URL:"
-    c["D12"].value = GITHUB_BASE
     c["C16"].value = "Redact on Export:"
     c["D16"].value = "TRUE"
 
@@ -286,7 +273,6 @@ def init_workbook(book: Any) -> None:
     _set_status(book, "init_workbook triggered")
     try:
         _build_control_sheet(book)
-        _get_github_base(book)
         _set_status(book, "Step 1/5: Fetching registry...")
 
         registry_text = _fetch("schemas/registry.yaml")
@@ -335,7 +321,6 @@ def initialize_sheets(book: Any) -> None:
     _set_status(book, "initialize_sheets triggered")
     try:
         _set_status(book, "Loading...")
-        _get_github_base(book)
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)

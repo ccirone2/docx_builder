@@ -71,8 +71,8 @@ loader.py (pasted once)
 ## Custom Schemas
 
 To use schemas from your own fork:
-1. Change the GitHub URL in the Configuration section (D12)
-2. Click Initialize to reload schemas
+1. Edit `GITHUB_REPO` and `GITHUB_BRANCH` in loader.py
+2. Click "Reload Scripts", then "Initialize Sheets"
 
 To paste a custom schema:
 1. Paste the YAML into the staging cell (D20)
