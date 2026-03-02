@@ -31,9 +31,11 @@ GitHub (schemas, templates, engine code)
 
 1. Install the [xlwings Lite](https://www.xlwings.org/lite) add-in from the Office add-in store
 2. Open a blank workbook
-3. Create a "Control" sheet following the layout in the [workbook README](workbook/README.md)
-4. Paste the bootstrap script into the xlwings Lite code editor
-5. Click **Initialize** to load available document types
+3. Paste the contents of [`workbook/loader.py`](workbook/loader.py) into the xlwings Lite code editor
+4. Add `pyyaml` and `python-docx` to the xlwings Lite requirements
+5. Click **Init Workbook** — the Control sheet and data entry sheets are created automatically
+
+See the [workbook README](workbook/README.md) for detailed setup instructions.
 
 ## Quickstart (Contributors)
 

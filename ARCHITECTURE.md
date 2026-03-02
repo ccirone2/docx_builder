@@ -30,27 +30,25 @@ for contributions back to the repo.
 │  │   ├── data_exchange.py                                          │
 │  │   ├── doc_generator.py                                          │
 │  │   ├── excel_builder.py                                          │
-│  │   └── file_bridge.py                                            │
+│  │   ├── file_bridge.py                                            │
+│  │   ├── validation_ux.py                                          │
+│  │   └── log.py                                                    │
 │  │                                                                  │
 │  ├── schemas/             Official schema definitions               │
 │  │   ├── registry.yaml        ← master index of all schemas        │
 │  │   ├── rfq_electric_utility.yaml                                 │
-│  │   ├── change_order.yaml                                         │
-│  │   └── ...                                                       │
-│  │                                                                  │
-│  ├── templates/           Programmatic doc templates (Python)       │
-│  │   ├── rfq_electric_utility.py                                   │
-│  │   ├── change_order.py                                           │
-│  │   └── ...                                                       │
+│  │   └── ...                  (future: change_order, etc.)         │
 │  │                                                                  │
 │  ├── workbook/            Thin-shell workbook + setup instructions  │
-│  │   ├── DocGen.xlsx                                               │
+│  │   ├── loader.py            ← paste into xlwings Lite (stable)   │
+│  │   ├── runner.py            ← fetched at runtime from GitHub     │
+│  │   ├── scripts.py           ← self-contained alternative         │
 │  │   └── README.md                                                 │
 │  │                                                                  │
 │  └── docs/                User & contributor documentation          │
 │      ├── CONTRIBUTING.md                                           │
 │      ├── SCHEMA_AUTHORING.md                                       │
-│      └── TEMPLATE_AUTHORING.md                                     │
+│      └── USER_GUIDE.md                                             │
 │                                                                     │
 └─────────────────────┬───────────────────────────────────────────────┘
                       │
@@ -89,39 +87,41 @@ docgen/
 ├── engine/                             # Core Python engine
 │   ├── __init__.py
 │   ├── config.py                       # Settings, GitHub URLs, paths
+│   ├── log.py                          # Timestamped logging helpers
 │   ├── schema_loader.py                # Parse YAML → Schema objects
 │   ├── data_exchange.py                # Import/export YAML, LLM prompts
 │   ├── doc_generator.py                # Merge data → .docx in memory
 │   ├── excel_builder.py                # Build data entry sheets from schema
 │   ├── file_bridge.py                  # Pyodide → browser download
+│   ├── validation_ux.py                # Color-coded validation reports
 │   ├── template_registry.py            # Schema ↔ template mapping
 │   └── github_loader.py               # Fetch files from GitHub + local
 │
 ├── schemas/                            # Official schema definitions
 │   ├── registry.yaml                   # Master index (see below)
 │   ├── rfq_electric_utility.yaml
-│   ├── change_order.yaml               # (future)
-│   └── ...
+│   └── ...                             # (future: change_order, etc.)
 │
-├── templates/                          # Programmatic doc templates
-│   ├── rfq_electric_utility.py         # python-docx builder for RFQ
-│   └── ...
-│
-├── workbook/                           # Distributable workbook
-│   ├── DocGen.xlsx                     # The thin-shell workbook
-│   ├── scripts.py                      # xlwings Lite scripts (pasted into add-in)
-│   └── requirements.txt                # Pyodide package list
+├── workbook/                           # Thin-shell workbook bootstrap
+│   ├── loader.py                       # Stable loader (paste into xlwings Lite)
+│   ├── runner.py                       # Business logic (fetched at runtime)
+│   ├── scripts.py                      # Self-contained alternative
+│   └── README.md                       # Setup instructions
 │
 ├── docs/
 │   ├── CONTRIBUTING.md                 # How to contribute schemas/templates
 │   ├── SCHEMA_AUTHORING.md             # How to write a new schema
-│   ├── TEMPLATE_AUTHORING.md           # How to write a doc template
 │   └── USER_GUIDE.md                   # End-user documentation
 │
-└── tests/                              # Schema + engine tests
+└── tests/                              # Schema + engine tests (64 tests)
+    ├── conftest.py                     # Shared fixtures
     ├── test_schema_loader.py
     ├── test_data_exchange.py
-    └── test_doc_generator.py
+    ├── test_github_loader.py
+    ├── test_excel_builder.py
+    ├── test_doc_generator.py
+    ├── test_file_bridge.py
+    └── test_validation_ux.py
 ```
 
 ### Schema Registry (`schemas/registry.yaml`)
@@ -385,82 +385,59 @@ This is safe in our context because:
 
 ---
 
-## Workbook Design (Thin Shell)
+## Workbook Design (Loader / Runner)
 
-The workbook itself contains minimal logic — just enough to bootstrap
-the system by fetching everything else from GitHub.
+The workbook uses a two-layer architecture: a **stable loader** pasted
+into xlwings Lite once, and a **runner** fetched from GitHub at runtime.
 
 ### What lives IN the workbook:
 
-- **xlwings Lite script**: ~50 lines of bootstrap code that fetches the
-  engine from GitHub and wires up the `@script` buttons
-- **Control sheet**: Document type dropdown, config cells (GitHub URL,
-  local path), action buttons, status display
-- **requirements.txt**: Package list for Pyodide
+- **loader.py**: ~120 lines of stable bootstrap code pasted into the
+  xlwings Lite code editor. Fetches the runner from GitHub and exposes
+  `@xw.script` entry points. Rarely needs updating.
+- **requirements.txt**: `pyyaml`, `python-docx`
 
 ### What lives OUTSIDE the workbook (fetched at runtime):
 
+- **runner.py** — All business logic (fetched by the loader)
 - Engine modules (schema_loader, data_exchange, doc_generator, etc.)
 - Schema definitions (YAML files)
-- Document templates (Python modules)
 - Registry (master index)
 
-### Bootstrap Script (in xlwings Lite)
+### Architecture
 
-```python
-import xlwings as xw
-from xlwings import script
-import requests
-import yaml
-
-GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
-
-
-def _fetch(path):
-    """Fetch a file from GitHub with caching."""
-    if not hasattr(_fetch, "_cache"):
-        _fetch._cache = {}
-    url = f"{GITHUB_BASE}/{path}"
-    if url not in _fetch._cache:
-        _fetch._cache[url] = requests.get(url).text
-    return _fetch._cache[url]
-
-
-def _load_engine():
-    """Fetch and execute engine modules from GitHub."""
-    modules = {}
-    for name in ["config", "schema_loader", "data_exchange",
-                  "doc_generator", "excel_builder", "file_bridge"]:
-        source = _fetch(f"engine/{name}.py")
-        ns = {"__name__": f"engine.{name}"}
-        exec(source, ns)
-        modules[name] = ns
-    return modules
-
-
-@script(button="[btn_init]Control!B5")
-def initialize(book: xw.Book):
-    """Fetch registry, populate schema dropdown, build sheets."""
-    control = book.sheets["Control"]
-    control["D3"].value = "Loading..."
-
-    # Fetch registry
-    registry_text = _fetch("schemas/registry.yaml")
-    registry = yaml.safe_load(registry_text)
-
-    # Populate dropdown with schema names
-    schema_names = [s["name"] for s in registry["schemas"]]
-    # ... write to dropdown range, build sheets
-
-    control["D3"].value = f"Ready — {len(schema_names)} document types loaded"
-
-
-@script(button="[btn_generate]Control!B7")
-def generate(book: xw.Book):
-    """Read data, validate, generate .docx, trigger download."""
-    engine = _load_engine()
-    # ... use engine modules to build document
 ```
+loader.py (pasted once into xlwings Lite)
+  └── fetches runner.py from GitHub
+        └── fetches engine/*.py from GitHub
+              └── fetches schemas/*.yaml from GitHub
+```
+
+The loader defines thin `@xw.script` entry points that delegate to the
+runner. The runner handles engine loading with a dependency graph,
+Control sheet creation via `init_workbook()`, and all data operations.
+
+### One-Click Setup
+
+Users paste `loader.py` and click **Init Workbook**. The runner's
+`init_workbook()` function:
+1. Fetches the schema registry from GitHub
+2. Creates the Control sheet with labels, buttons, and config cells
+3. Builds data entry sheets for the default document type
+
+No manual sheet creation required.
+
+### Updating
+
+- **Runner/engine changes**: Automatic — reopen workbook or click
+  "Reload Scripts" to re-fetch
+- **New script buttons**: Only needed when adding new `@xw.script`
+  entry points to loader.py (rare)
+
+### Alternative: Self-Contained Script
+
+`scripts.py` bundles all logic inline for cases where remote fetching
+is not desired. It must be re-pasted when code is updated.
 
 ---
 
@@ -506,13 +483,13 @@ Control Sheet Layout:
 |-------|----------------------------|------------------------------------------------|
 | ✅ 1  | Schema system              | YAML format + loader + validator + compound     |
 | ✅ 1b | Data exchange              | YAML import/export + LLM prompt + redaction     |
-| 🔲 2  | GitHub loader              | Fetch registry, schemas, templates from GitHub  |
-| 🔲 3  | Excel builder              | Auto-generate data entry sheets from schema     |
-| 🔲 4  | Document builder           | python-docx programmatic templates              |
-| 🔲 5  | Browser download bridge    | Pyodide → JS file download                      |
-| 🔲 6  | Workbook bootstrap         | Thin-shell workbook + @script wiring            |
-| 🔲 7  | Local customization        | File picker, paste, fork URL support            |
-| 🔲 8  | Validation UX              | In-sheet error display + status messages         |
+| ✅ 2  | GitHub loader              | Fetch registry, schemas from GitHub + caching   |
+| ✅ 3  | Excel builder              | Auto-generate data entry sheets from schema     |
+| ✅ 4  | Document builder           | python-docx programmatic templates              |
+| ✅ 5  | Browser download bridge    | Pyodide → JS file download                      |
+| ✅ 6  | Workbook bootstrap         | Loader/runner architecture + @script wiring     |
+| ✅ 7  | Local customization        | File picker, paste, fork URL support            |
+| ✅ 8  | Validation UX              | Color-coded validation reports                   |
 | 🔲 9  | Contribution tooling       | Schema/template validation CLI, PR template      |
 | 🔲 10 | Template system v2         | docxtpl + hosted .docx templates (optional)      |
 

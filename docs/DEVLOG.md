@@ -85,3 +85,64 @@ entire engine, workbook integration, and documentation in one session.
 - tests/ (7 test files, 56 tests total)
 - pyproject.toml, README.md, LICENSE, .gitignore
 - docs/CONTRIBUTING.md, docs/SCHEMA_AUTHORING.md, docs/USER_GUIDE.md
+
+## 2026-02-28 — Easy Workbook Init (PR #4)
+
+Major refactor of the workbook bootstrap system. Replaced the
+monolithic scripts.py with a two-layer loader/runner architecture.
+
+### Loader/Runner Architecture
+- **loader.py**: Stable ~120-line bootstrap pasted into xlwings Lite.
+  Defines `@xw.script` entry points that delegate to the runner.
+  Never needs updating unless new buttons are added.
+- **runner.py**: ~500-line business logic module fetched from GitHub
+  at runtime. All updates take effect automatically.
+- **init_workbook()**: One-click setup — creates Control sheet with
+  labels, formatting, config cells, and builds data entry sheets.
+  No manual sheet creation required.
+
+### xlwings Lite Compatibility Fixes
+- Removed `from __future__ import annotations` (breaks Pyodide)
+- Removed all merge operations (Office.js incompatibility)
+- Removed autofit/column_width code (not supported in Lite)
+- Wrapped formatting in try/except for graceful degradation
+- Used values-only mode for cell writes
+
+### Logging & Status
+- Added `engine/log.py` with timestamped DEBUG/INFO/WARN/ERROR
+- All status output via print() to xlwings task pane
+- Improved error reporting with exception type and step progress
+
+### Other Changes
+- Custom GitHub URL read from Control!D12
+- 404 handling in loader and github_loader
+- BRANCH variable for non-main branch support
+- scripts.py preserved as self-contained alternative
+- excel_builder.py expanded with control sheet planning (+8 tests)
+
+**Files created:** workbook/loader.py, workbook/runner.py, engine/log.py
+**Files modified:** engine/excel_builder.py, engine/data_exchange.py,
+  engine/doc_generator.py, engine/file_bridge.py, engine/github_loader.py,
+  engine/schema_loader.py, workbook/scripts.py, workbook/README.md,
+  tests/test_excel_builder.py
+
+**Test count:** 64 tests across 7 test files (up from 56)
+
+## 2026-03-02 — Documentation Audit
+
+Verified all documentation against current codebase and PRs. Fixed:
+
+- **ARCHITECTURE.md**: Updated repo structure (added loader.py,
+  runner.py, log.py, validation_ux.py; removed references to
+  nonexistent templates/ directory, DocGen.xlsx, and
+  TEMPLATE_AUTHORING.md). Updated build phases table (phases 2–8
+  marked complete). Replaced bootstrap script section with
+  loader/runner architecture description.
+- **PLAN.md**: Updated test count from 56 to 64.
+- **README.md**: Updated user quickstart to reference loader.py
+  and init_workbook() instead of manual Control sheet creation.
+- **CLAUDE.md**: Added engine/log.py and all missing modules to
+  architecture quick reference. Updated print() convention to
+  reference engine.log helpers.
+- **BOOTSTRAP_PROMPT.md**: Added historical context note.
+- **DEVLOG.md**: Added entries for PR #4 changes and this audit.
