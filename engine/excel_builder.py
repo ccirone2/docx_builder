@@ -210,12 +210,6 @@ def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
     instrs.append(
         CellInstruction(sheet=sheet, row=3, col=2, value="")
     )
-    # D3: status cell
-    instrs.append(
-        CellInstruction(
-            sheet=sheet, row=3, col=4, value="Ready — select a type and Initialize",
-        )
-    )
 
     # --- Button label rows (A column, next to xlwings button widgets) ---
     button_labels = [

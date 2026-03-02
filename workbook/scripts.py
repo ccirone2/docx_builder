@@ -27,7 +27,6 @@ _cache: dict[str, str] = {}
 _engine: dict[str, dict] = {}
 
 # Cell addresses on the Control sheet
-STATUS_CELL = "D3"
 SCHEMA_DROPDOWN_CELL = "B3"
 YAML_STAGING_CELL = "D20"
 
@@ -111,11 +110,6 @@ def _load_module(name: str) -> dict:
         exec(source, mod.__dict__)  # noqa: S102
         _engine[name] = mod.__dict__
     return _engine[name]
-
-
-def _set_status(book: Any, message: str) -> None:
-    """Write a status message to the Control sheet."""
-    book.sheets["Control"][STATUS_CELL].value = message
 
 
 def _get_github_base(book: Any) -> str:
@@ -228,7 +222,6 @@ def _build_control_sheet(book: Any) -> None:
     # Document Type selector (Row 3)
     c["A3"].value = "Document Type:"
     c["A3"].font.bold = True
-    c[STATUS_CELL].value = "Ready"
 
     # Button labels (column A, next to xlwings button widgets)
     for row, label in [
@@ -268,13 +261,13 @@ def init_workbook(book: xw.Book) -> None:
     print(">>> init_workbook called")
     try:
         _build_control_sheet(book)
-        _set_status(book, "Step 1/5: Fetching registry...")
+        print("Step 1/5: Fetching registry...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         schema_names = [s["name"] for s in registry.get("schemas", [])]
 
-        _set_status(book, f"Step 2/5: Found {len(schema_names)} schemas")
+        print(f"Step 2/5: Found {len(schema_names)} schemas")
         control = book.sheets["Control"]
         if schema_names:
             control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
@@ -284,23 +277,23 @@ def init_workbook(book: xw.Book) -> None:
         if selected:
             entry = _find_schema_entry(registry, selected)
             if entry:
-                _set_status(book, f"Step 3/5: Fetching {entry['name']}...")
+                print(f"Step 3/5: Fetching {entry['name']}...")
                 schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
 
-                _set_status(book, "Step 4/5: Loading engine modules...")
+                print("Step 4/5: Loading engine modules...")
                 loader = _load_module("schema_loader")
                 schema = loader["load_schema_from_text"](schema_yaml)
 
-                _set_status(book, "Step 5/5: Building sheets...")
+                print("Step 5/5: Building sheets...")
                 builder = _load_module("excel_builder")
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
 
-        _set_status(book, f"Ready — {len(schema_names)} document types loaded")
+        print(f"Ready — {len(schema_names)} document types loaded")
 
     except Exception as e:
         try:
-            _set_status(book, f"Error [{type(e).__name__}]: {e}")
+            print(f"Error [{type(e).__name__}]: {e}")
         except Exception:
             pass
 
@@ -310,7 +303,7 @@ def initialize_sheets(book: xw.Book) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
     print(">>> initialize_sheets called")
     try:
-        _set_status(book, "Loading...")
+        print("Loading...")
         _get_github_base(book)
 
         registry_text = _fetch("schemas/registry.yaml")
@@ -334,10 +327,10 @@ def initialize_sheets(book: xw.Book) -> None:
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
 
-        _set_status(book, f"Ready — {len(schema_names)} document types loaded")
+        print(f"Ready — {len(schema_names)} document types loaded")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_generate]Control!B7")
@@ -345,19 +338,19 @@ def generate_document(book: xw.Book) -> None:
     """Read data, validate, build .docx, trigger download."""
     print(">>> generate_document called")
     try:
-        _set_status(book, "Generating document...")
+        print("Generating document...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         selected = _read_selected_schema(book)
 
         if not selected:
-            _set_status(book, "Error: No document type selected")
+            print("Error: No document type selected")
             return
 
         entry = _find_schema_entry(registry, selected)
         if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
+            print(f"Error: Schema '{selected}' not found")
             return
 
         schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
@@ -368,7 +361,7 @@ def generate_document(book: xw.Book) -> None:
 
         result = loader["validate_data"](schema, data)
         if not result.valid:
-            _set_status(book, f"Validation failed: {len(result.errors)} errors")
+            print(f"Validation failed: {len(result.errors)} errors")
             return
 
         doc_gen = _load_module("doc_generator")
@@ -378,10 +371,10 @@ def generate_document(book: xw.Book) -> None:
         filename = f"{entry['id']}.docx"
         bridge["trigger_docx_download"](doc, filename)
 
-        _set_status(book, f"Document generated: {filename}")
+        print(f"Document generated: {filename}")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_validate]Control!B9")
@@ -389,19 +382,19 @@ def validate_data(book: xw.Book) -> None:
     """Run validation only, show results in status area."""
     print(">>> validate_data called")
     try:
-        _set_status(book, "Validating...")
+        print("Validating...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         selected = _read_selected_schema(book)
 
         if not selected:
-            _set_status(book, "Error: No document type selected")
+            print("Error: No document type selected")
             return
 
         entry = _find_schema_entry(registry, selected)
         if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
+            print(f"Error: Schema '{selected}' not found")
             return
 
         schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
@@ -415,12 +408,12 @@ def validate_data(book: xw.Book) -> None:
             msg = "Validation passed"
             if result.warnings:
                 msg += f" ({len(result.warnings)} warnings)"
-            _set_status(book, msg)
+            print(msg)
         else:
-            _set_status(book, f"Validation failed: {len(result.errors)} errors")
+            print(f"Validation failed: {len(result.errors)} errors")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_export]Control!B11")
@@ -428,19 +421,19 @@ def export_data_yaml(book: xw.Book) -> None:
     """Export data to YAML, write to staging cell."""
     print(">>> export_data_yaml called")
     try:
-        _set_status(book, "Exporting...")
+        print("Exporting...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         selected = _read_selected_schema(book)
 
         if not selected:
-            _set_status(book, "Error: No document type selected")
+            print("Error: No document type selected")
             return
 
         entry = _find_schema_entry(registry, selected)
         if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
+            print(f"Error: Schema '{selected}' not found")
             return
 
         schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
@@ -456,10 +449,10 @@ def export_data_yaml(book: xw.Book) -> None:
         yaml_output = exchange["export_snapshot"](schema, data, redact=redact)
 
         control[YAML_STAGING_CELL].value = yaml_output
-        _set_status(book, "Data exported to YAML (see staging cell)")
+        print("Data exported to YAML (see staging cell)")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_import]Control!B13")
@@ -467,13 +460,13 @@ def import_data_yaml(book: xw.Book) -> None:
     """Import YAML data from the staging cell."""
     print(">>> import_data_yaml called")
     try:
-        _set_status(book, "Importing...")
+        print("Importing...")
 
         control = book.sheets["Control"]
         yaml_text = control[YAML_STAGING_CELL].value
 
         if not yaml_text:
-            _set_status(book, "Error: No YAML data in staging cell")
+            print("Error: No YAML data in staging cell")
             return
 
         registry_text = _fetch("schemas/registry.yaml")
@@ -481,12 +474,12 @@ def import_data_yaml(book: xw.Book) -> None:
         selected = _read_selected_schema(book)
 
         if not selected:
-            _set_status(book, "Error: No document type selected")
+            print("Error: No document type selected")
             return
 
         entry = _find_schema_entry(registry, selected)
         if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
+            print(f"Error: Schema '{selected}' not found")
             return
 
         schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
@@ -497,12 +490,12 @@ def import_data_yaml(book: xw.Book) -> None:
         data, warnings = exchange["import_snapshot"](schema, str(yaml_text))
 
         if warnings:
-            _set_status(book, f"Imported with {len(warnings)} warnings")
+            print(f"Imported with {len(warnings)} warnings")
         else:
-            _set_status(book, f"Data imported successfully ({len(data)} fields)")
+            print(f"Data imported successfully ({len(data)} fields)")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_llm]Control!B15")
@@ -510,19 +503,19 @@ def generate_llm_prompt(book: xw.Book) -> None:
     """Generate LLM fill-in prompt, write to staging cell."""
     print(">>> generate_llm_prompt called")
     try:
-        _set_status(book, "Generating LLM prompt...")
+        print("Generating LLM prompt...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         selected = _read_selected_schema(book)
 
         if not selected:
-            _set_status(book, "Error: No document type selected")
+            print("Error: No document type selected")
             return
 
         entry = _find_schema_entry(registry, selected)
         if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
+            print(f"Error: Schema '{selected}' not found")
             return
 
         schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
@@ -540,10 +533,10 @@ def generate_llm_prompt(book: xw.Book) -> None:
 
         control = book.sheets["Control"]
         control[YAML_STAGING_CELL].value = prompt
-        _set_status(book, "LLM prompt generated (see staging cell)")
+        print("LLM prompt generated (see staging cell)")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_load_schema]Control!B17")
@@ -551,26 +544,26 @@ def load_custom_schema(book: xw.Book) -> None:
     """Read YAML from staging cell and register as local schema."""
     print(">>> load_custom_schema called")
     try:
-        _set_status(book, "Loading custom schema...")
+        print("Loading custom schema...")
 
         control = book.sheets["Control"]
         yaml_text = control[YAML_STAGING_CELL].value
 
         if not yaml_text:
-            _set_status(book, "Error: No YAML in staging cell")
+            print("Error: No YAML in staging cell")
             return
 
         gh_loader = _load_module("github_loader")
         entry = gh_loader["register_local_schema"](str(yaml_text))
 
         if entry is None:
-            _set_status(book, "Error: Invalid schema YAML")
+            print("Error: Invalid schema YAML")
             return
 
-        _set_status(book, f"Custom schema loaded: {entry.name}")
+        print(f"Custom schema loaded: {entry.name}")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
 
 
 @script(button="[btn_load_template]Control!B19")
@@ -578,23 +571,23 @@ def load_custom_template(book: xw.Book) -> None:
     """Read Python template source from staging cell."""
     print(">>> load_custom_template called")
     try:
-        _set_status(book, "Loading custom template...")
+        print("Loading custom template...")
 
         control = book.sheets["Control"]
         source = control[YAML_STAGING_CELL].value
 
         if not source:
-            _set_status(book, "Error: No template source in staging cell")
+            print("Error: No template source in staging cell")
             return
 
         gh_loader = _load_module("github_loader")
         builder = gh_loader["load_template_builder"](str(source))
 
         if builder is None:
-            _set_status(book, "Error: Template must define build_document()")
+            print("Error: Template must define build_document()")
             return
 
-        _set_status(book, "Custom template loaded successfully")
+        print("Custom template loaded successfully")
 
     except Exception as e:
-        _set_status(book, f"Error [{type(e).__name__}]: {e}")
+        print(f"Error [{type(e).__name__}]: {e}")
