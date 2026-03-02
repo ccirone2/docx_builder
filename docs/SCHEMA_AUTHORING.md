@@ -11,7 +11,7 @@ schema:
   id: my_document_type
   name: "My Document Type"
   version: "1.0"
-  template: "my_document_type.py"
+  template: ""                    # reserved for future template system (ADR-007)
   description: "Description of this document type"
 
 core_fields:
@@ -195,7 +195,7 @@ schemas:
     name: "Your Schema Name"
     version: "1.0"
     schema_file: "your_schema.yaml"
-    template_file: "your_schema.py"
+    template_file: ""              # reserved for future template system (ADR-007)
     description: "What this document type is for"
     category: "Your Category"
     tags:

@@ -15,14 +15,16 @@ It runs entirely in your browser using xlwings Lite -- no Python installation ne
 ### Setup
 
 1. Open a blank Excel workbook
-2. Create a "Control" sheet with the required layout
-3. Paste the bootstrap script into the xlwings Lite code editor
-4. Set Pyodide requirements: `python-docx`, `docxtpl`, `pyyaml`
+2. Open the xlwings Lite code editor
+3. Set Pyodide requirements: `python-docx`, `docxtpl`, `pyyaml`
+4. Paste the contents of `workbook/loader.py` into the code editor
+5. Click **Init Workbook** — this creates the Control sheet with all labels,
+   config cells, and formatting, then builds data-entry sheets automatically
 
 ### Basic Workflow
 
-1. Click **Initialize** to load available document types
-2. Select a document type from the dropdown
+1. Select a document type from the dropdown on the Control sheet
+2. Click **Initialize** to build data-entry sheets for that schema
 3. Fill in data on the auto-generated sheets
 4. Click **Validate** to check for errors
 5. Click **Generate** to create the Word document
@@ -45,7 +47,7 @@ It runs entirely in your browser using xlwings Lite -- no Python installation ne
 ### Custom Schemas
 
 - Load custom schemas via file picker or clipboard paste
-- Point to your own GitHub fork for custom schema repositories
+- Point to your own GitHub fork by editing `GITHUB_REPO` in the loader
 - See [SCHEMA_AUTHORING.md](SCHEMA_AUTHORING.md) for creating schemas
 
 ## Troubleshooting
