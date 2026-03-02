@@ -5,7 +5,6 @@ from pathlib import Path
 
 from engine.schema_loader import (
     Schema,
-    load_schema,
     load_schema_from_text,
     validate_data,
 )

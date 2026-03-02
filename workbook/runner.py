@@ -23,6 +23,7 @@ GITHUB_BASE = (
 )
 _cache: dict[str, str] = {}
 _engine: dict[str, dict] = {}
+_field_index: dict[str, tuple[str, int, int]] = {}  # field_key → (sheet, row, col)
 
 # Cell addresses on the Control sheet
 SCHEMA_DROPDOWN_CELL = "B3"
@@ -33,11 +34,14 @@ _MODULE_DEPS: dict[str, list[str]] = {
     "log": [],
     "config": [],
     "schema_loader": ["log"],
-    "excel_builder": ["config", "schema_loader"],
+    "excel_plan": ["config", "schema_loader"],
+    "excel_control": ["config", "excel_plan"],
+    "excel_writer": ["config", "excel_plan"],
     "data_exchange": ["log", "schema_loader"],
+    "llm_helpers": ["schema_loader", "data_exchange"],
     "doc_generator": ["log", "schema_loader"],
     "validation_ux": ["schema_loader"],
-    "file_bridge": ["log"],
+    "file_bridge": ["log", "config"],
     "github_loader": ["log"],
 }
 
@@ -142,6 +146,36 @@ def _find_schema_entry(registry: dict, name: str) -> dict | None:
     return None
 
 
+def _prepare_schema(book: Any) -> tuple[Any, dict] | None:
+    """Fetch registry, resolve selected schema, and load schema object.
+
+    Common pipeline shared by most public functions. Fetches the registry
+    from GitHub, reads the selected schema name from the Control sheet,
+    looks up the registry entry, and loads the schema.
+
+    Args:
+        book: The xlwings Book object.
+
+    Returns:
+        Tuple of (schema, entry) on success, or None if no schema
+        selected or schema not found (status message already set).
+    """
+    registry_text = _fetch("schemas/registry.yaml")
+    registry = yaml.safe_load(registry_text)
+    selected = _read_selected_schema(book)
+    if not selected:
+        _set_status(book, "Error: No document type selected")
+        return None
+    entry = _find_schema_entry(registry, selected)
+    if not entry:
+        _set_status(book, f"Error: Schema '{selected}' not found")
+        return None
+    schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
+    loader = _load_module("schema_loader")
+    schema = loader["load_schema_from_text"](schema_yaml)
+    return schema, entry
+
+
 def _read_data_from_sheets(book: Any, schema: Any) -> dict[str, Any]:
     """Read user-entered data from the data entry sheets."""
     data: dict[str, Any] = {}
@@ -157,7 +191,19 @@ def _read_data_from_sheets(book: Any, schema: Any) -> dict[str, Any]:
 
 
 def _read_field_value(book: Any, field: Any) -> Any:
-    """Read a single field value from its sheet location."""
+    """Read a single field value using cached location or fallback scan.
+
+    Uses the _field_index built during sheet initialization for O(1)
+    lookup. Falls back to scanning if the index wasn't populated
+    (e.g., sheets built before index support was added).
+    """
+    loc = _field_index.get(field.key)
+    if loc:
+        sheet_name, row, col = loc
+        if sheet_name in [s.name for s in book.sheets]:
+            return book.sheets[sheet_name].range((row, col)).value
+
+    # Fallback: scan (handles sheets built before index was cached)
     for sheet in book.sheets:
         for row in range(2, 100):
             cell_value = sheet.range((row, 1)).value
@@ -297,9 +343,11 @@ def init_workbook(book: Any) -> None:
                 schema = loader["load_schema_from_text"](schema_yaml)
 
                 _set_status(book, "Step 5/5: Building sheets...")
-                builder = _load_module("excel_builder")
-                plan = builder["plan_sheets"](schema)
-                builder["build_sheets"](book, plan)
+                planner = _load_module("excel_plan")
+                plan = planner["plan_sheets"](schema)
+                writer = _load_module("excel_writer")
+                writer["build_sheets"](book, plan)
+                _field_index.update(plan.field_locations)
 
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
@@ -339,9 +387,11 @@ def initialize_sheets(book: Any) -> None:
                 loader = _load_module("schema_loader")
                 schema = loader["load_schema_from_text"](schema_yaml)
 
-                builder = _load_module("excel_builder")
-                plan = builder["plan_sheets"](schema)
-                builder["build_sheets"](book, plan)
+                planner = _load_module("excel_plan")
+                plan = planner["plan_sheets"](schema)
+                writer = _load_module("excel_writer")
+                writer["build_sheets"](book, plan)
+                _field_index.update(plan.field_locations)
 
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
@@ -354,40 +404,22 @@ def generate_document(book: Any) -> None:
     _set_status(book, "generate_document triggered")
     try:
         _set_status(book, "Generating document...")
-
-        registry_text = _fetch("schemas/registry.yaml")
-        registry = yaml.safe_load(registry_text)
-        selected = _read_selected_schema(book)
-
-        if not selected:
-            _set_status(book, "Error: No document type selected")
+        result = _prepare_schema(book)
+        if result is None:
             return
-
-        entry = _find_schema_entry(registry, selected)
-        if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
-            return
-
-        schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
-        loader = _load_module("schema_loader")
-        schema = loader["load_schema_from_text"](schema_yaml)
-
+        schema, entry = result
         data = _read_data_from_sheets(book, schema)
-
-        result = loader["validate_data"](schema, data)
-        if not result.valid:
-            _set_status(book, f"Validation failed: {len(result.errors)} errors")
+        loader = _load_module("schema_loader")
+        validation = loader["validate_data"](schema, data)
+        if not validation.valid:
+            _set_status(book, f"Validation failed: {len(validation.errors)} errors")
             return
-
         doc_gen = _load_module("doc_generator")
         doc = doc_gen["generate_document"](schema, data)
-
         bridge = _load_module("file_bridge")
         filename = f"{entry['id']}.docx"
         bridge["trigger_docx_download"](doc, filename)
-
         _set_status(book, f"Document generated: {filename}")
-
     except Exception as e:
         _report_error(book, e)
 
@@ -397,35 +429,20 @@ def validate_data(book: Any) -> None:
     _set_status(book, "validate_data triggered")
     try:
         _set_status(book, "Validating...")
-
-        registry_text = _fetch("schemas/registry.yaml")
-        registry = yaml.safe_load(registry_text)
-        selected = _read_selected_schema(book)
-
-        if not selected:
-            _set_status(book, "Error: No document type selected")
+        result = _prepare_schema(book)
+        if result is None:
             return
-
-        entry = _find_schema_entry(registry, selected)
-        if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
-            return
-
-        schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
-        loader = _load_module("schema_loader")
-        schema = loader["load_schema_from_text"](schema_yaml)
-
+        schema, entry = result
         data = _read_data_from_sheets(book, schema)
-        result = loader["validate_data"](schema, data)
-
-        if result.valid:
+        loader = _load_module("schema_loader")
+        validation = loader["validate_data"](schema, data)
+        if validation.valid:
             msg = "Validation passed"
-            if result.warnings:
-                msg += f" ({len(result.warnings)} warnings)"
+            if validation.warnings:
+                msg += f" ({len(validation.warnings)} warnings)"
             _set_status(book, msg)
         else:
-            _set_status(book, f"Validation failed: {len(result.errors)} errors")
-
+            _set_status(book, f"Validation failed: {len(validation.errors)} errors")
     except Exception as e:
         _report_error(book, e)
 
@@ -435,35 +452,17 @@ def export_data_yaml(book: Any) -> None:
     _set_status(book, "export_data_yaml triggered")
     try:
         _set_status(book, "Exporting...")
-
-        registry_text = _fetch("schemas/registry.yaml")
-        registry = yaml.safe_load(registry_text)
-        selected = _read_selected_schema(book)
-
-        if not selected:
-            _set_status(book, "Error: No document type selected")
+        result = _prepare_schema(book)
+        if result is None:
             return
-
-        entry = _find_schema_entry(registry, selected)
-        if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
-            return
-
-        schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
-        loader = _load_module("schema_loader")
-        schema = loader["load_schema_from_text"](schema_yaml)
-
+        schema, entry = result
         data = _read_data_from_sheets(book, schema)
-
         control = book.sheets["Control"]
         redact = bool(control["D16"].value)
-
         exchange = _load_module("data_exchange")
         yaml_output = exchange["export_snapshot"](schema, data, redact=redact)
-
         control[YAML_STAGING_CELL].value = yaml_output
         _set_status(book, "Data exported to YAML (see staging cell)")
-
     except Exception as e:
         _report_error(book, e)
 
@@ -473,39 +472,21 @@ def import_data_yaml(book: Any) -> None:
     _set_status(book, "import_data_yaml triggered")
     try:
         _set_status(book, "Importing...")
-
         control = book.sheets["Control"]
         yaml_text = control[YAML_STAGING_CELL].value
-
         if not yaml_text:
             _set_status(book, "Error: No YAML data in staging cell")
             return
-
-        registry_text = _fetch("schemas/registry.yaml")
-        registry = yaml.safe_load(registry_text)
-        selected = _read_selected_schema(book)
-
-        if not selected:
-            _set_status(book, "Error: No document type selected")
+        result = _prepare_schema(book)
+        if result is None:
             return
-
-        entry = _find_schema_entry(registry, selected)
-        if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
-            return
-
-        schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
-        loader = _load_module("schema_loader")
-        schema = loader["load_schema_from_text"](schema_yaml)
-
+        schema, entry = result
         exchange = _load_module("data_exchange")
         data, warnings = exchange["import_snapshot"](schema, str(yaml_text))
-
         if warnings:
             _set_status(book, f"Imported with {len(warnings)} warnings")
         else:
             _set_status(book, f"Data imported successfully ({len(data)} fields)")
-
     except Exception as e:
         _report_error(book, e)
 
@@ -515,37 +496,16 @@ def generate_llm_prompt(book: Any) -> None:
     _set_status(book, "generate_llm_prompt triggered")
     try:
         _set_status(book, "Generating LLM prompt...")
-
-        registry_text = _fetch("schemas/registry.yaml")
-        registry = yaml.safe_load(registry_text)
-        selected = _read_selected_schema(book)
-
-        if not selected:
-            _set_status(book, "Error: No document type selected")
+        result = _prepare_schema(book)
+        if result is None:
             return
-
-        entry = _find_schema_entry(registry, selected)
-        if not entry:
-            _set_status(book, f"Error: Schema '{selected}' not found")
-            return
-
-        schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
-        loader = _load_module("schema_loader")
-        schema = loader["load_schema_from_text"](schema_yaml)
-
+        schema, entry = result
         data = _read_data_from_sheets(book, schema)
-
-        exchange = _load_module("data_exchange")
-        prompt = exchange["generate_llm_prompt"](
-            schema,
-            existing_data=data,
-            redact=True,
-        )
-
+        llm = _load_module("llm_helpers")
+        prompt = llm["generate_llm_prompt"](schema, existing_data=data, redact=True)
         control = book.sheets["Control"]
         control[YAML_STAGING_CELL].value = prompt
         _set_status(book, "LLM prompt generated (see staging cell)")
-
     except Exception as e:
         _report_error(book, e)
 

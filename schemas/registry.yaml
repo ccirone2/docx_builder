@@ -16,7 +16,7 @@ schemas:
     name: "RFQ - Electric Utility Services"
     version: "1.0"
     schema_file: "rfq_electric_utility.yaml"
-    template_file: "rfq_electric_utility.py"
+    template_file: ""  # programmatic generation (ADR-007)
     description: >
       Request for Quotation for soliciting bids from contractors
       for electric utility construction, maintenance, and engineering services.

@@ -13,7 +13,7 @@ schema:
   id: rfq_electric_utility
   name: "Request for Quotation - Electric Utility Services"
   version: "1.0"
-  template: "rfq_electric_utility_template.docx"
+  template: ""  # programmatic generation (ADR-007)
   description: >
     Standard RFQ for soliciting bids from contractors for electric utility
     construction, maintenance, and engineering services.

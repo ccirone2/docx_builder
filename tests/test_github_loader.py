@@ -13,14 +13,12 @@ from engine.github_loader import (
     _local_schemas,
     _local_template_source,
     clear_cache,
-    get_bundled_schema,
     get_local_schema_yaml,
     is_cache_fresh,
     register_bundled_schema,
     register_local_schema,
     resolve_schema_yaml,
 )
-
 
 SAMPLE_SCHEMA_YAML = """\
 schema:

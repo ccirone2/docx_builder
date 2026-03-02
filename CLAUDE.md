@@ -46,15 +46,17 @@ Before ending ANY session, always:
 
 ## Architecture Quick Reference
 - `engine/schema_loader.py` — YAML → Schema objects, validation, compound fields
-- `engine/data_exchange.py` — YAML import/export, LLM prompts, redaction
+- `engine/data_exchange.py` — YAML import/export, redaction (no LLM logic)
+- `engine/llm_helpers.py` — LLM prompt generation (`generate_llm_prompt`, `generate_schema_reference`)
 - `engine/github_loader.py` — Fetch schemas/templates from GitHub + local
-- `engine/config.py` — Pyodide-aware settings
+- `engine/config.py` — Pyodide-aware settings, `IS_PYODIDE` constant
 - `engine/log.py` — Timestamped logging (DEBUG/INFO/WARN/ERROR)
 - `engine/doc_generator.py` — python-docx document generation
-- `engine/excel_builder.py` — Schema-driven Excel sheet planning
-- `engine/file_bridge.py` — Pyodide → browser download via JS bridge
+- `engine/excel_plan.py` — Dataclasses (`CellInstruction`, `SheetPlan`, `TablePlan`) + planning functions
+- `engine/excel_control.py` — Control sheet planning (`plan_control_sheet`)
+- `engine/excel_writer.py` — xlwings adapter (`build_sheets`, `apply_cell`)
+- `engine/file_bridge.py` — Pyodide → browser download via JS bridge (uses `IS_PYODIDE` from config)
 - `engine/validation_ux.py` — Color-coded validation reports
-- `engine/template_registry.py` — Schema ↔ template mapping
 - `workbook/loader.py` — Stable xlwings Lite bootstrap (paste once)
 - `workbook/runner.py` — Business logic (fetched at runtime from GitHub)
 - `schemas/registry.yaml` — Master index of document types

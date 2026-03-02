@@ -28,8 +28,13 @@ for contributions back to the repo.
 │  ├── engine/              Python modules (fetched at runtime)       │
 │  │   ├── schema_loader.py                                          │
 │  │   ├── data_exchange.py                                          │
+│  │   ├── llm_helpers.py                                            │
+│  │   ├── config.py                                                 │
+│  │   ├── github_loader.py                                          │
 │  │   ├── doc_generator.py                                          │
-│  │   ├── excel_builder.py                                          │
+│  │   ├── excel_plan.py                                             │
+│  │   ├── excel_control.py                                          │
+│  │   ├── excel_writer.py                                           │
 │  │   ├── file_bridge.py                                            │
 │  │   ├── validation_ux.py                                          │
 │  │   └── log.py                                                    │
@@ -61,7 +66,7 @@ for contributions back to the repo.
 │                   │          │                           │
 │  • xlwings Lite   │          │  ├── schemas/             │
 │    add-in code    │          │  │   └── my_custom.yaml   │
-│  • Control sheet  │          │  └── templates/            │
+│  • Control sheet  │          │  └── templates/  (future)   │
 │  • Fetches engine │          │      └── my_custom.py     │
 │    + schemas from │          │                           │
 │    GitHub at      │◄─────────│  User points workbook    │
@@ -85,16 +90,18 @@ docgen/
 │
 ├── engine/                             # Core Python engine
 │   ├── __init__.py
-│   ├── config.py                       # Settings, GitHub URLs, paths
+│   ├── config.py                       # Settings, GitHub URLs, IS_PYODIDE constant
 │   ├── log.py                          # Timestamped logging helpers
 │   ├── schema_loader.py                # Parse YAML → Schema objects
-│   ├── data_exchange.py                # Import/export YAML, LLM prompts
+│   ├── data_exchange.py                # Import/export YAML, redaction (no LLM)
+│   ├── llm_helpers.py                  # LLM prompt generation, schema reference
 │   ├── doc_generator.py                # Merge data → .docx in memory
-│   ├── excel_builder.py                # Build data entry sheets from schema
-│   ├── file_bridge.py                  # Pyodide → browser download
+│   ├── excel_plan.py                   # CellInstruction/SheetPlan/TablePlan dataclasses + planning
+│   ├── excel_control.py                # plan_control_sheet() for the Control sheet
+│   ├── excel_writer.py                 # xlwings adapter: build_sheets(), apply_cell()
+│   ├── file_bridge.py                  # Pyodide → browser download (uses IS_PYODIDE)
 │   ├── validation_ux.py                # Color-coded validation reports
-│   ├── template_registry.py            # Schema ↔ template mapping
-│   └── github_loader.py               # Fetch files from GitHub + local
+│   └── github_loader.py                # Fetch files from GitHub + local
 │
 ├── schemas/                            # Official schema definitions
 │   ├── registry.yaml                   # Master index (see below)
@@ -111,15 +118,19 @@ docgen/
 │   ├── SCHEMA_AUTHORING.md             # How to write a new schema
 │   └── USER_GUIDE.md                   # End-user documentation
 │
-└── tests/                              # Schema + engine tests (64 tests)
+└── tests/                              # Schema + engine tests (99 tests)
     ├── conftest.py                     # Shared fixtures
     ├── test_schema_loader.py
-    ├── test_data_exchange.py
+    ├── test_data_exchange.py           # YAML import/export, redaction (LLM fns → llm_helpers)
     ├── test_github_loader.py
-    ├── test_excel_builder.py
+    ├── test_excel_builder.py           # Imports from excel_plan, excel_control, excel_writer
     ├── test_doc_generator.py
     ├── test_file_bridge.py
-    └── test_validation_ux.py
+    ├── test_validation_ux.py
+    ├── test_config.py
+    ├── test_doc_helpers.py
+    ├── test_edge_cases.py
+    └── test_integration.py
 ```
 
 ### Schema Registry (`schemas/registry.yaml`)
@@ -333,6 +344,9 @@ def fetch_template(template_file: str, base_url: str = GITHUB_BASE) -> str:
     return fetch_text(f"templates/{template_file}", base_url)
 ```
 
+> **Note:** The `templates/` directory is planned for a future phase.
+> Currently all document generation is programmatic (see ADR-007).
+
 ### Template Execution
 
 Since templates are Python modules fetched as text, they're executed via
@@ -361,7 +375,7 @@ This is safe in our context because:
 ~/Documents/docgen/
 ├── schemas/
 │   └── pole_inspection.yaml      # their new schema
-└── templates/
+└── templates/                    # planned for a future phase (ADR-007)
     └── pole_inspection.py        # their new template
 ```
 
@@ -370,7 +384,7 @@ This is safe in our context because:
 ### When ready to contribute:
 
 1. Fork the repo on GitHub
-2. Add their files to `schemas/` and `templates/`
+2. Add their files to `schemas/` (and `templates/` when supported)
 3. Add an entry to `schemas/registry.yaml`
 4. Submit a pull request
 

@@ -45,10 +45,12 @@ class FieldDef:
 
     @property
     def is_table(self) -> bool:
+        """Whether this field is a table type."""
         return self.type == "table"
 
     @property
     def is_compound(self) -> bool:
+        """Whether this field is a compound type."""
         return self.type == "compound"
 
     @property
@@ -101,6 +103,7 @@ class Schema:
 
     @property
     def all_groups(self) -> list[FieldGroup]:
+        """All core and optional groups combined."""
         return self.core_groups + self.optional_groups
 
     @property
@@ -153,9 +156,11 @@ class Schema:
         return result
 
     def get_table_fields(self) -> list[FieldDef]:
+        """Return all table-type fields."""
         return [f for f in self.all_fields if f.is_table]
 
     def get_compound_fields(self) -> list[FieldDef]:
+        """Return all compound-type fields."""
         return [f for f in self.all_fields if f.is_compound]
 
 
@@ -339,7 +344,7 @@ def validate_data(schema: Schema, data: dict[str, Any]) -> ValidationResult:
 
 def _validate_single_field(
     f: FieldDef, val: Any, errors: list, warnings: list, label_prefix: str = ""
-):
+) -> None:
     """Validate a single field value against its definition."""
     label = f"{label_prefix}{f.label}"
 
@@ -360,12 +365,6 @@ def _validate_single_field(
     if f.validation and "pattern" in f.validation:
         if isinstance(val, str) and not re.match(f.validation["pattern"], val):
             errors.append(f"{label}: Value '{val}' doesn't match expected format")
-
-    return ValidationResult(
-        valid=len(errors) == 0,
-        errors=errors,
-        warnings=warnings,
-    )
 
 
 # ---------------------------------------------------------------------------
