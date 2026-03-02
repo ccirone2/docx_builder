@@ -35,25 +35,6 @@ def _fetch_text(url):
     return open_url(url).read()
 
 
-def _resolve_base(book):
-    """Read custom GitHub URL from Control!D12 if available."""
-    global GITHUB_BASE  # noqa: PLW0603
-    try:
-        url = book.sheets["Control"]["D12"].value
-        if url and str(url).strip().startswith("http"):
-            new_base = str(url).strip().rstrip("/")
-            if new_base != GITHUB_BASE:
-                GITHUB_BASE = new_base
-                _invalidate_runner()
-    except Exception:
-        pass
-
-
-def _invalidate_runner():
-    """Clear the cached runner so the next call re-fetches it."""
-    global _runner_mod  # noqa: PLW0603
-    _runner_mod = None
-
 
 def _get_runner():
     """Fetch and cache the runner module from GitHub."""
@@ -66,8 +47,8 @@ def _get_runner():
     if "def init_workbook" not in code:
         raise RuntimeError(
             "Could not load runner from: " + url + " — "
-            "check that the GitHub URL (Control!D12) points "
-            "to a valid repo and branch"
+            "check GITHUB_REPO and GITHUB_BRANCH in the loader, "
+            "then click Reload Scripts"
         )
     mod = types.ModuleType("docx_runner")
     exec(code, mod.__dict__)  # noqa: S102
@@ -93,7 +74,6 @@ def _show_error(book, exc):
 def _call(book, func_name):
     """Fetch runner and call func_name(book) with error handling."""
     try:
-        _resolve_base(book)
         runner = _get_runner()
         # Propagate the loader's GITHUB_BASE so the runner uses
         # the same repo/branch the user configured in the loader.

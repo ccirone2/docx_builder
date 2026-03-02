@@ -42,7 +42,6 @@ for contributions back to the repo.
 │  ├── workbook/            Thin-shell workbook + setup instructions  │
 │  │   ├── loader.py            ← paste into xlwings Lite (stable)   │
 │  │   ├── runner.py            ← fetched at runtime from GitHub     │
-│  │   ├── scripts.py           ← self-contained alternative         │
 │  │   └── README.md                                                 │
 │  │                                                                  │
 │  └── docs/                User & contributor documentation          │
@@ -105,7 +104,6 @@ docgen/
 ├── workbook/                           # Thin-shell workbook bootstrap
 │   ├── loader.py                       # Stable loader (paste into xlwings Lite)
 │   ├── runner.py                       # Business logic (fetched at runtime)
-│   ├── scripts.py                      # Self-contained alternative
 │   └── README.md                       # Setup instructions
 │
 ├── docs/
@@ -241,12 +239,14 @@ via the File API (no server needed).
 ### Mechanism C: GitHub Fork (Best for contributors)
 
 Power users fork the repo, add their schema/template, and configure the
-workbook to fetch from their fork URL instead of (or in addition to) the
-main repo. When ready, they submit a PR.
+workbook to fetch from their fork. Edit `GITHUB_REPO` and `GITHUB_BRANCH`
+in `loader.py`, then click **Reload Scripts** to re-fetch.
+When ready, they submit a PR.
 
-```
-Control Sheet:
-  GitHub URL: https://raw.githubusercontent.com/YOURFORK/docx_builder/main/
+```python
+# In loader.py — change these two constants:
+GITHUB_REPO = "YOURUSER/docx_builder"
+GITHUB_BRANCH = "my-feature-branch"
 ```
 
 ### Mechanism D: Local Development Server (Advanced)
@@ -434,17 +434,16 @@ No manual sheet creation required.
 - **New script buttons**: Only needed when adding new `@xw.script`
   entry points to loader.py (rare)
 
-### Alternative: Self-Contained Script
-
-`scripts.py` bundles all logic inline for cases where remote fetching
-is not desired. It must be re-pasted when code is updated.
-
 ---
 
 ## Configuration
 
-The Control sheet has a configuration area where users can customize
-the GitHub source and enable local overrides:
+The GitHub repo and branch are configured via constants in `loader.py`
+(the file pasted into xlwings Lite). To switch repos or branches, edit
+`GITHUB_REPO` and `GITHUB_BRANCH` in `loader.py` and click
+**Reload Scripts**.
+
+The Control sheet has a configuration area for runtime settings:
 
 ```
 Control Sheet Layout:
@@ -463,9 +462,6 @@ Control Sheet Layout:
 │                       │                 │                │
 ├─────────────────────────────────────────────────────────┤
 │  CONFIGURATION        │                 │                │
-│                       │                 │                │
-│  GitHub Repo URL:     │  https://raw.githubusercontent   │
-│                       │  .com/ccirone2/docx_builder/main          │
 │                       │                 │                │
 │  Custom Schemas:      │  (use file picker or paste YAML) │
 │                       │                 │                │
