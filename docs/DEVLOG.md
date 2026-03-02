@@ -307,3 +307,37 @@ improve field-lookup performance in the workbook runner.
 **Files modified:** engine/data_exchange.py, engine/file_bridge.py,
   workbook/runner.py, tests/test_data_exchange.py, tests/test_excel_builder.py,
   ARCHITECTURE.md, CLAUDE.md, docs/PLAN.md
+
+## 2026-03-02 — Docs Folder Cleanup
+
+Removed 1,888 lines of stale documentation and fixed outdated references
+across the remaining docs.
+
+### Deleted (3 files, 1,888 lines)
+- `docs/plan.md` (250 lines): One-shot refactoring plan for Plan 5,
+  fully executed. Confusingly coexisted with `PLAN.md`.
+- `docs/BOOTSTRAP_PROMPT.md` (760 lines): Original project bootstrap
+  mega-prompt. Referenced deleted modules (`template_registry.py`,
+  `scripts.py`, `excel_builder.py`) and stale conventions.
+- `docs/DEV_INFRASTRUCTURE.md` (878 lines): Setup guide for Claude Code
+  hooks/commands/agents. Content now lives in `.claude/` config. Inline
+  doc examples had diverged from reality.
+
+### Fixed (4 files)
+- `docs/CONTRIBUTING.md`: Removed step "Write a matching document
+  template in `templates/`" — directory doesn't exist (ADR-007).
+  Updated PR checklist to match programmatic generation.
+- `docs/USER_GUIDE.md`: Rewrote setup steps to reference `loader.py`
+  and `init_workbook()` instead of manual Control sheet creation.
+- `docs/SCHEMA_AUTHORING.md`: Set `template` to `""` with ADR-007
+  comment in both the schema example and registry entry example.
+- `docs/PLAN.md`: Folded 22-row completed phases table and 7-row
+  maintenance table into a 3-line summary. Backlog retained.
+
+### Also updated
+- `CLAUDE.md`: Removed stale "Run data exchange" key command (CLI block
+  was deleted in Plan 4). Simplified "Current Build Phase" section.
+
+**Files deleted:** docs/plan.md, docs/BOOTSTRAP_PROMPT.md, docs/DEV_INFRASTRUCTURE.md
+**Files modified:** docs/CONTRIBUTING.md, docs/USER_GUIDE.md,
+  docs/SCHEMA_AUTHORING.md, docs/PLAN.md, CLAUDE.md

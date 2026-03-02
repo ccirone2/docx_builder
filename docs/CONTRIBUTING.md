@@ -46,8 +46,7 @@ Always reference the relevant GitHub issue: `feat: add change order schema (#42)
 1. Create a new YAML file in `schemas/` following the format in
    [SCHEMA_AUTHORING.md](SCHEMA_AUTHORING.md)
 2. Add an entry to `schemas/registry.yaml`
-3. Write a matching document template in `templates/`
-4. Test locally:
+3. Test locally:
    ```bash
    PYTHONPATH=. python -c "
    from engine.schema_loader import load_schema
@@ -55,14 +54,14 @@ Always reference the relevant GitHub issue: `feat: add change order schema (#42)
    print(f'{s.name}: {len(s.all_fields)} fields')
    "
    ```
-5. Submit a PR
+4. Submit a PR
 
 ## PR Checklist
 
 - [ ] Schema YAML parses without errors
 - [ ] All required fields have sensible placeholders
-- [ ] Template builds a valid .docx from sample data
-- [ ] Schema and template are documented (description, field hints)
+- [ ] Document generates a valid .docx from sample data
+- [ ] Schema is documented (description, field hints)
 - [ ] No sensitive or proprietary data in defaults or examples
 - [ ] Category assigned in `registry.yaml`
 - [ ] Tests pass: `pytest tests/ -v`

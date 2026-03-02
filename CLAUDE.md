@@ -27,7 +27,6 @@ Before ending ANY session, always:
 - Format: `ruff format engine/`
 - Type check: `pyright engine/`
 - Run schema loader: `PYTHONPATH=. python engine/schema_loader.py`
-- Run data exchange: `PYTHONPATH=. python engine/data_exchange.py`
 
 ## Code Conventions
 - Python 3.11+, type hints on all function signatures
@@ -63,4 +62,4 @@ Before ending ANY session, always:
 - `schemas/rfq_electric_utility.yaml` — RFQ schema (36 fields, 9 groups)
 
 ## Current Build Phase
-See `docs/PLAN.md` for the active phase and task breakdown.
+All core phases complete. See `docs/PLAN.md` for backlog items.
