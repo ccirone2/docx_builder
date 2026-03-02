@@ -78,8 +78,3 @@ To paste a custom schema:
 1. Paste the YAML into the staging cell (D20)
 2. Click "Load Custom Schema"
 
-## Alternative: Self-Contained Script
-
-If you prefer a single file with no remote fetching, you can paste
-`scripts.py` instead. This bundles all logic inline but must be
-re-pasted whenever the code is updated.

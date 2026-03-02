@@ -42,7 +42,6 @@ for contributions back to the repo.
 │  ├── workbook/            Thin-shell workbook + setup instructions  │
 │  │   ├── loader.py            ← paste into xlwings Lite (stable)   │
 │  │   ├── runner.py            ← fetched at runtime from GitHub     │
-│  │   ├── scripts.py           ← self-contained alternative         │
 │  │   └── README.md                                                 │
 │  │                                                                  │
 │  └── docs/                User & contributor documentation          │
@@ -105,7 +104,6 @@ docgen/
 ├── workbook/                           # Thin-shell workbook bootstrap
 │   ├── loader.py                       # Stable loader (paste into xlwings Lite)
 │   ├── runner.py                       # Business logic (fetched at runtime)
-│   ├── scripts.py                      # Self-contained alternative
 │   └── README.md                       # Setup instructions
 │
 ├── docs/
@@ -433,11 +431,6 @@ No manual sheet creation required.
   "Reload Scripts" to re-fetch
 - **New script buttons**: Only needed when adding new `@xw.script`
   entry points to loader.py (rare)
-
-### Alternative: Self-Contained Script
-
-`scripts.py` bundles all logic inline for cases where remote fetching
-is not desired. It must be re-pasted when code is updated.
 
 ---
 
