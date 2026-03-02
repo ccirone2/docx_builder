@@ -7,7 +7,7 @@ Handles the full source resolution chain:
   3. GitHub raw URLs (primary source for official content)
   4. Bundled fallback (optional, for offline use)
 
-All fetching uses `requests`, which works in Pyodide.
+Fetching uses `requests` (standard Python) or Pyodide HTTP APIs (in-browser).
 """
 
 from __future__ import annotations
@@ -32,8 +32,6 @@ DEFAULT_GITHUB_BASE = "https://raw.githubusercontent.com/ccirone2/docx_builder/m
 # Paths within the repo
 REGISTRY_PATH = "schemas/registry.yaml"
 SCHEMAS_DIR = "schemas"
-TEMPLATES_DIR = "templates"
-ENGINE_DIR = "engine"
 
 # Cache TTL in seconds (5 minutes)
 CACHE_TTL = 300
@@ -94,12 +92,6 @@ def get_bundled_schema(schema_id: str) -> str | None:
         Schema YAML text, or None if not bundled.
     """
     return _bundled_schemas.get(schema_id)
-
-
-BUNDLED_REGISTRY: dict[str, Any] = {
-    "registry_version": "1.0",
-    "schemas": [],
-}
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +207,7 @@ def fetch_schema(schema_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> Any:
 
 def fetch_template_source(template_file: str, base_url: str = DEFAULT_GITHUB_BASE) -> str | None:
     """Fetch a template Python module as source text."""
-    return fetch_text(f"{TEMPLATES_DIR}/{template_file}", base_url)
+    return fetch_text(f"templates/{template_file}", base_url)
 
 
 def load_template_builder(template_source: str) -> callable | None:
@@ -240,47 +232,6 @@ def load_template_builder(template_source: str) -> callable | None:
     if builder is None:
         log.warn("Template module does not define build_document()")
     return builder
-
-
-# ---------------------------------------------------------------------------
-# Engine module fetching
-# ---------------------------------------------------------------------------
-
-_engine_modules: dict[str, dict] = {}
-
-ENGINE_MODULE_NAMES = [
-    "config",
-    "schema_loader",
-    "data_exchange",
-    "doc_generator",
-    "excel_builder",
-    "file_bridge",
-]
-
-
-def fetch_engine(base_url: str = DEFAULT_GITHUB_BASE) -> dict[str, dict]:
-    """
-    Fetch all engine modules from GitHub and execute them.
-
-    Returns:
-        Dict of {module_name: namespace_dict}.
-    """
-    if _engine_modules:
-        return _engine_modules
-
-    for name in ENGINE_MODULE_NAMES:
-        source = fetch_text(f"{ENGINE_DIR}/{name}.py", base_url)
-        if source is None:
-            log.warn(f"Could not fetch engine/{name}.py")
-            continue
-        ns = {"__name__": f"engine.{name}"}
-        try:
-            exec(source, ns)
-            _engine_modules[name] = ns
-        except Exception as e:
-            log.error(f"Error loading engine/{name}.py: {e}")
-
-    return _engine_modules
 
 
 # ---------------------------------------------------------------------------
@@ -444,43 +395,3 @@ def resolve_template_source(
             return fetch_template_source(entry.template_file, base_url)
 
     return None
-
-
-# ---------------------------------------------------------------------------
-# CLI testing
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    log.info("=== GitHub Loader Test ===")
-
-    # Test local schema registration
-    sample_yaml = """
-schema:
-  id: test_custom
-  name: "Test Custom Schema"
-  version: "0.1"
-  template: ""
-  description: "A test schema registered locally"
-core_fields:
-  - group: "Basic Info"
-    fields:
-      - key: title
-        label: "Title"
-        type: text
-        required: true
-"""
-    entry = register_local_schema(sample_yaml)
-    log.info(f"Registered local schema: {entry.id} ({entry.name})")
-    log.info(f"  source: {entry.source}")
-    log.info(f"  category: {entry.category}")
-
-    # Test local retrieval
-    retrieved = get_local_schema_yaml("test_custom")
-    log.info(f"  retrieved YAML: {len(retrieved)} chars")
-
-    # Show what resolve_all_schemas would return
-    # (GitHub fetch will fail in this test env, but local should work)
-    log.info("Resolving all schemas (local only in test env):")
-    all_schemas = resolve_all_schemas()
-    for s in all_schemas:
-        log.info(f"  [{s.source}] {s.id}: {s.name}")

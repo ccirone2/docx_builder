@@ -7,7 +7,6 @@ from engine.excel_builder import (
     plan_group_layout,
     plan_sheets,
     plan_table_layout,
-    _table_sheet_name,
 )
 from engine.schema_loader import Schema
 

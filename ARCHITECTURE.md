@@ -28,6 +28,8 @@ for contributions back to the repo.
 │  ├── engine/              Python modules (fetched at runtime)       │
 │  │   ├── schema_loader.py                                          │
 │  │   ├── data_exchange.py                                          │
+│  │   ├── config.py                                                 │
+│  │   ├── github_loader.py                                          │
 │  │   ├── doc_generator.py                                          │
 │  │   ├── excel_builder.py                                          │
 │  │   ├── file_bridge.py                                            │
@@ -61,7 +63,7 @@ for contributions back to the repo.
 │                   │          │                           │
 │  • xlwings Lite   │          │  ├── schemas/             │
 │    add-in code    │          │  │   └── my_custom.yaml   │
-│  • Control sheet  │          │  └── templates/            │
+│  • Control sheet  │          │  └── templates/  (future)   │
 │  • Fetches engine │          │      └── my_custom.py     │
 │    + schemas from │          │                           │
 │    GitHub at      │◄─────────│  User points workbook    │
@@ -93,7 +95,6 @@ docgen/
 │   ├── excel_builder.py                # Build data entry sheets from schema
 │   ├── file_bridge.py                  # Pyodide → browser download
 │   ├── validation_ux.py                # Color-coded validation reports
-│   ├── template_registry.py            # Schema ↔ template mapping
 │   └── github_loader.py               # Fetch files from GitHub + local
 │
 ├── schemas/                            # Official schema definitions
@@ -333,6 +334,9 @@ def fetch_template(template_file: str, base_url: str = GITHUB_BASE) -> str:
     return fetch_text(f"templates/{template_file}", base_url)
 ```
 
+> **Note:** The `templates/` directory is planned for a future phase.
+> Currently all document generation is programmatic (see ADR-007).
+
 ### Template Execution
 
 Since templates are Python modules fetched as text, they're executed via
@@ -361,7 +365,7 @@ This is safe in our context because:
 ~/Documents/docgen/
 ├── schemas/
 │   └── pole_inspection.yaml      # their new schema
-└── templates/
+└── templates/                    # planned for a future phase (ADR-007)
     └── pole_inspection.py        # their new template
 ```
 
@@ -370,7 +374,7 @@ This is safe in our context because:
 ### When ready to contribute:
 
 1. Fork the repo on GitHub
-2. Add their files to `schemas/` and `templates/`
+2. Add their files to `schemas/` (and `templates/` when supported)
 3. Add an entry to `schemas/registry.yaml`
 4. Submit a pull request
 

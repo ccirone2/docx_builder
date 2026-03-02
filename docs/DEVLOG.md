@@ -213,3 +213,41 @@ engine files. All changes verified with 96 passing tests and clean lint.
 **Files deleted:** engine/template_registry.py
 **Files modified:** engine/schema_loader.py, engine/config.py,
   engine/file_bridge.py
+
+## 2026-03-02 — Code Quality Review (Plans 2-4)
+
+Completed documentation reconciliation, test coverage expansion, and
+code refactoring — the remaining 3 plans from the comprehensive code
+quality review.
+
+### Plan 2: Documentation Reconciliation
+- ARCHITECTURE.md: added missing modules (config.py, github_loader.py,
+  validation_ux.py) to system diagram; removed template_registry.py
+  from file tree; annotated templates/ as future-phase
+- CLAUDE.md: removed template_registry.py from Architecture Quick Reference
+- schemas/rfq_electric_utility.yaml: set template to "" with ADR-007 comment
+- schemas/registry.yaml: set template_file to "" with ADR-007 comment
+
+### Plan 3: Test Coverage Expansion (32 new tests)
+- tests/test_config.py (3 tests): IS_PYODIDE, color hex format, sheet names
+- tests/test_doc_helpers.py (12 tests): _format_date, _format_value_for_doc,
+  _should_include_section
+- tests/test_edge_cases.py (13 tests): schema validation edge cases,
+  data_exchange deserialization, github_loader error paths
+- tests/test_integration.py (4 tests): full pipeline, export/import
+  round-trip, redacted round-trip, validation report pipeline
+
+### Plan 4: Code Refactoring
+- workbook/runner.py: extracted `_prepare_schema()` helper to eliminate
+  5-step boilerplate duplicated across 5 public functions
+- engine/github_loader.py: removed dead code (BUNDLED_REGISTRY,
+  fetch_engine, ENGINE_MODULE_NAMES, TEMPLATES_DIR, CLI block);
+  fixed docstring
+- engine/data_exchange.py: removed 161-line CLI block
+
+**Files modified:** ARCHITECTURE.md, CLAUDE.md, schemas/registry.yaml,
+  schemas/rfq_electric_utility.yaml, workbook/runner.py,
+  engine/github_loader.py, engine/data_exchange.py
+**Files created:** tests/test_config.py, tests/test_doc_helpers.py,
+  tests/test_edge_cases.py, tests/test_integration.py
+**Test count:** 96 tests (was 64), all passing, lint clean

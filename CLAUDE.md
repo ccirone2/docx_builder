@@ -54,7 +54,6 @@ Before ending ANY session, always:
 - `engine/excel_builder.py` — Schema-driven Excel sheet planning
 - `engine/file_bridge.py` — Pyodide → browser download via JS bridge
 - `engine/validation_ux.py` — Color-coded validation reports
-- `engine/template_registry.py` — Schema ↔ template mapping
 - `workbook/loader.py` — Stable xlwings Lite bootstrap (paste once)
 - `workbook/runner.py` — Business logic (fetched at runtime from GitHub)
 - `schemas/registry.yaml` — Master index of document types

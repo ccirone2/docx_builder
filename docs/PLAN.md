@@ -23,15 +23,18 @@
 
 ### Test Summary
 
-- 64 tests across 7 test files (+ conftest.py)
+- 96 tests across 10 test files (+ conftest.py)
 - All passing, lint clean
-- Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux
+- Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux, config, integration
 
 ### Maintenance
 
 | Task | Status | Notes |
 |------|--------|-------|
 | Plan 1: Stale code cleanup | Done | Dead code, unused constants, obsolete module removed |
+| Plan 2: Documentation reconciliation | Done | ARCHITECTURE.md, CLAUDE.md, schema YAML template fields |
+| Plan 3: Test coverage expansion | Done | 32 new tests across 4 new files (config, doc helpers, edge cases, integration) |
+| Plan 4: Code refactoring | Done | _prepare_schema() helper, dead code removal in github_loader/data_exchange |
 
 ### Backlog
 
