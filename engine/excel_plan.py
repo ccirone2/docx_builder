@@ -73,29 +73,32 @@ class TablePlan:
 # ---------------------------------------------------------------------------
 
 _MAX_SHEET_NAME = 31  # Excel maximum
+_ILLEGAL_SHEET_CHARS = str.maketrans({c: "-" for c in ":/\\?*[]"})
 
 
 def _truncate_sheet_name(name: str) -> str:
-    """Truncate a sheet name to Excel's 31-character limit.
+    """Sanitize and truncate a sheet name for Excel.
+
+    Replaces characters that Excel forbids in sheet names
+    (: / \\ ? * [ ]) with hyphens, then trims to 31 characters.
 
     Args:
         name: Proposed sheet name.
 
     Returns:
-        Name trimmed to 31 characters.
+        Sanitized name trimmed to 31 characters.
     """
-    return name[:_MAX_SHEET_NAME]
+    return name.translate(_ILLEGAL_SHEET_CHARS)[:_MAX_SHEET_NAME]
 
 
 def _group_sheet_name(group_name: str, section: str) -> str:
     """Generate a sheet name for a field group."""
-    prefix = "Data" if section == "core" else "Optional"
-    return _truncate_sheet_name(f"{prefix} - {group_name}")
+    return _truncate_sheet_name(group_name)
 
 
 def _table_sheet_name(field_label: str) -> str:
     """Generate a sheet name for a table field."""
-    return _truncate_sheet_name(f"Table - {field_label}")
+    return _truncate_sheet_name(field_label)
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +280,6 @@ def _field_row_instructions(
     elif field.type == "date":
         number_format = "YYYY-MM-DD"
 
-    row_height = 60 if field.type == "multiline" else None
     dropdown = field.choices if field.type == "choice" else None
     if field.type == "boolean":
         dropdown = ["TRUE", "FALSE"]
@@ -290,7 +292,6 @@ def _field_row_instructions(
             value=field.default if field.default is not None else "",
             number_format=number_format,
             merge_cols=merge,
-            row_height=row_height,
             dropdown_choices=dropdown,
             field_key=field.key,
         )

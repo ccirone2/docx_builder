@@ -23,10 +23,13 @@ Before ending ANY session, always:
 
 ## Key Commands
 - Test: `PYTHONPATH=. python -m pytest tests/ -v`
-- Lint: `ruff check engine/ --fix`
-- Format: `ruff format engine/`
+- Lint: `ruff check engine/ dev/ --fix`
+- Format: `ruff format engine/ dev/`
 - Type check: `pyright engine/`
 - Run schema loader: `PYTHONPATH=. python engine/schema_loader.py`
+- Harness init: `PYTHONPATH=. python dev/harness.py init`
+- Harness verify: `PYTHONPATH=. python dev/harness.py verify`
+- Harness full pipeline: `PYTHONPATH=. python dev/harness.py init && PYTHONPATH=. python dev/harness.py fill && PYTHONPATH=. python dev/harness.py validate`
 
 ## Code Conventions
 - Python 3.11+, type hints on all function signatures
@@ -60,6 +63,10 @@ Before ending ANY session, always:
 - `workbook/runner.py` — Business logic (fetched at runtime from GitHub)
 - `schemas/registry.yaml` — Master index of document types
 - `schemas/rfq_electric_utility.yaml` — RFQ schema (36 fields, 9 groups)
+- `dev/mock_book.py` — In-memory xlwings Book/Sheet/Cell mock for local testing
+- `dev/local_runner.py` — Local pipeline orchestration (init, read, fill, validate, generate)
+- `dev/harness.py` — CLI entry point for running the pipeline locally
+- `dev/sample_data.py` — Shared sample data for tests and harness
 
 ## Current Build Phase
 All core phases complete. See `docs/PLAN.md` for backlog items.

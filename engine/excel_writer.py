@@ -30,7 +30,10 @@ def build_sheets(book: Any, plan: SheetPlan) -> None:
     """
     for sheet_name in plan.sheets:
         if sheet_name not in [s.name for s in book.sheets]:
-            book.sheets.add(sheet_name)
+            if len(book.sheets) > 0:
+                book.sheets.add(sheet_name, after=book.sheets[-1])
+            else:
+                book.sheets.add(sheet_name)
 
     for instr in plan.instructions:
         try:
@@ -87,12 +90,6 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     try:
         if instr.number_format:
             cell.number_format = instr.number_format
-    except Exception:
-        pass
-
-    try:
-        if instr.row_height:
-            cell.row_height = instr.row_height
     except Exception:
         pass
 

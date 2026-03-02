@@ -214,7 +214,7 @@ def _read_field_value(book: Any, field: Any) -> Any:
 
 def _read_table_data(book: Any, field: Any) -> list[dict]:
     """Read table data from a dedicated table sheet."""
-    sheet_name = f"Table - {field.label}"
+    sheet_name = field.label[:31]
     if sheet_name not in [s.name for s in book.sheets]:
         return []
 
@@ -348,6 +348,14 @@ def init_workbook(book: Any) -> None:
                 writer = _load_module("excel_writer")
                 writer["build_sheets"](book, plan)
                 _field_index.update(plan.field_locations)
+
+        # Remove default sheet left over from workbook creation
+        for name in ("Sheet1", "Sheet 1"):
+            if name in [s.name for s in book.sheets] and len(book.sheets) > 1:
+                try:
+                    book.sheets[name].delete()
+                except Exception:
+                    pass
 
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
