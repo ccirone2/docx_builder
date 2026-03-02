@@ -177,6 +177,12 @@ class MockSheet:
     def __init__(self, name: str) -> None:
         self.name: str = name
         self._cells: dict[tuple[int, int], MockCell] = {}
+        self._parent: _MockSheetCollection | None = None
+
+    def delete(self) -> None:
+        """Remove this sheet from its parent collection."""
+        if self._parent is not None:
+            self._parent._sheets = [s for s in self._parent._sheets if s is not self]
 
     def range(self, address: tuple[int, int] | str) -> MockCell:
         """Return (or create) a cell at the given position.
@@ -228,9 +234,16 @@ class _MockSheetCollection:
     def __init__(self) -> None:
         self._sheets: list[MockSheet] = []
 
-    def add(self, name: str) -> MockSheet:
-        """Add a new sheet. Returns the created sheet."""
+    def add(self, name: str, **kwargs: Any) -> MockSheet:
+        """Add a new sheet. Returns the created sheet.
+
+        Args:
+            name: The name of the sheet to create.
+            **kwargs: Accepted for API compatibility with xlwings
+                (e.g. ``after=``). Ignored — mock always appends.
+        """
         sheet = MockSheet(name)
+        sheet._parent = self
         self._sheets.append(sheet)
         return sheet
 

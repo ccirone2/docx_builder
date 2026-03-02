@@ -225,3 +225,16 @@ class TestMockBook:
         book.sheets["Test"]["B1"]  # access but don't set value
         d = book.to_dict()
         assert len(d["sheets"][0]["cells"]) == 1
+
+    def test_delete_sheet(self):
+        book = MockBook()
+        book.sheets.add("Keep")
+        book.sheets.add("Remove")
+        book.sheets.add("Also Keep")
+        assert len(book.sheets) == 3
+        book.sheets["Remove"].delete()
+        assert len(book.sheets) == 2
+        names = [s.name for s in book.sheets]
+        assert "Remove" not in names
+        assert "Keep" in names
+        assert "Also Keep" in names

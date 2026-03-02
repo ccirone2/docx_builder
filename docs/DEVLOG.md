@@ -308,6 +308,74 @@ improve field-lookup performance in the workbook runner.
   workbook/runner.py, tests/test_data_exchange.py, tests/test_excel_builder.py,
   ARCHITECTURE.md, CLAUDE.md, docs/PLAN.md
 
+## 2026-03-02 — Local Dev Harness & Excel Sheet Cleanup (feature/local-dev-harness)
+
+Built a local development harness for running the engine pipeline without
+Pyodide or browser Excel, and cleaned up several Excel sheet formatting
+behaviors across the engine. 149 tests pass (99 existing + 50 new), lint clean.
+
+### New dev/ package (local development harness)
+- `dev/mock_book.py`: In-memory xlwings mock. Provides `MockBook`, `MockSheet`,
+  and `MockCell` classes with A1-notation parsing, dict/JSON serialization, and
+  `sheets.add(**kwargs)` for API compatibility with xlwings. `MockSheet` has a
+  `delete()` method and holds a parent back-reference to support Sheet1 removal.
+- `dev/local_runner.py`: Pipeline orchestration using direct engine imports
+  (no pyodide.http). Exposes `init_workbook`, `read_data`, `fill_data`,
+  `validate`, `generate`, and `export_yaml` as plain Python functions.
+- `dev/harness.py`: CLI with 6 subcommands: `init`, `inspect`, `verify`,
+  `fill`, `validate`, `generate`. Supports `--backend mock` (zero deps) and
+  `--backend excel` (requires desktop xlwings).
+- `dev/sample_data.py`: Shared sample RFQ data dictionary used by both test
+  fixtures and the harness, avoiding duplication.
+
+### New tests (50 tests added)
+- `tests/test_mock_book.py`: 34 unit tests covering A1 parsing, sheet
+  operations, cell read/write, JSON round-trip, and delete behavior.
+- `tests/test_local_runner.py`: 16 integration tests covering init_workbook,
+  fill_data, validate, generate, and export_yaml against the MockBook.
+
+### Sheet name prefixes removed (excel_plan.py)
+- `_group_sheet_name()` no longer prepends "Data - " or "Optional - ".
+- `_table_sheet_name()` no longer prepends "Table - ".
+- Sheet names are now just the sanitized, truncated group/field label.
+- `_read_table_data()` in `workbook/runner.py` updated to match:
+  uses `field.label[:31]` instead of `f"Table - {field.label}"`.
+
+### Sheet insertion order fixed (excel_writer.py)
+- `build_sheets()` now passes `after=book.sheets[-1]` when creating each
+  sheet, so sheets are appended in schema order rather than inserted before
+  the active sheet. The `after` kwarg is guarded for an empty book.
+- `MockBook.sheets.add()` accepts `**kwargs` to absorb the `after` argument
+  without error.
+
+### Sheet1 removal (local_runner.py + runner.py)
+- `init_workbook()` in both `dev/local_runner.py` and `workbook/runner.py`
+  now deletes "Sheet1" (desktop Excel) or "Sheet 1" (Excel Online) after
+  all data sheets are built, so only named schema sheets remain.
+
+### Row heights removed (excel_plan.py + excel_writer.py)
+- `_field_row_instructions()` in `excel_plan.py` no longer sets
+  `row_height=60` for multiline fields.
+- `apply_cell()` in `excel_writer.py` no longer applies `row_height`
+  formatting.
+- `CellInstruction.row_height` field retained (defaults to `None`) for
+  backwards compatibility; it is silently ignored by the writer.
+
+### Sheet name sanitization bug fix (excel_plan.py)
+- `_truncate_sheet_name()` now replaces all Excel-illegal characters
+  (`: / \ ? * [ ]`) with hyphens before truncating to 31 characters.
+  Previously, illegal characters were passed through unchanged, which
+  caused errors when Excel rejected the sheet name.
+
+**ADR added:** ADR-010 (Local Development Harness) — already appended
+in the previous session.
+
+**Files created:** dev/mock_book.py, dev/local_runner.py, dev/harness.py,
+  dev/sample_data.py, tests/test_mock_book.py, tests/test_local_runner.py
+**Files modified:** engine/excel_plan.py, engine/excel_writer.py,
+  workbook/runner.py
+**Test count:** 149 tests across 12 files, all passing, lint clean
+
 ## 2026-03-02 — Docs Folder Cleanup
 
 Removed 1,888 lines of stale documentation and fixed outdated references

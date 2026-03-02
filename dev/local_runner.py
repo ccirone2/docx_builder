@@ -22,7 +22,7 @@ from docx import Document
 from engine.data_exchange import export_snapshot
 from engine.doc_generator import generate_document
 from engine.excel_control import plan_control_sheet
-from engine.excel_plan import SheetPlan, plan_sheets
+from engine.excel_plan import SheetPlan, _table_sheet_name, plan_sheets
 from engine.excel_writer import build_sheets
 from engine.schema_loader import Schema, ValidationResult, load_schema, validate_data
 
@@ -52,6 +52,15 @@ def load_default_schema(schema_id: str = "rfq_electric_utility") -> Schema:
 # ---------------------------------------------------------------------------
 # Workbook initialization
 # ---------------------------------------------------------------------------
+
+
+def _remove_default_sheet(book: Any) -> None:
+    """Remove the default 'Sheet1' that Excel creates for new workbooks."""
+    for name in ("Sheet1", "Sheet 1"):
+        if name in [s.name for s in book.sheets]:
+            # Only delete if there are other sheets (can't delete the last sheet)
+            if len(book.sheets) > 1:
+                book.sheets[name].delete()
 
 
 def init_workbook(
@@ -87,6 +96,9 @@ def init_workbook(
     # 3. Build data entry sheets
     data_plan = plan_sheets(schema)
     build_sheets(book, data_plan)
+
+    # 4. Remove default "Sheet1" left over from workbook creation
+    _remove_default_sheet(book)
 
     return data_plan.field_locations
 
@@ -148,7 +160,7 @@ def _read_field_value(
 
 def _read_table_data(book: Any, field: Any) -> list[dict]:
     """Read table data from a dedicated table sheet."""
-    sheet_name = f"Table - {field.label}"
+    sheet_name = _table_sheet_name(field.label)
     if sheet_name not in [s.name for s in book.sheets]:
         return []
 
@@ -229,7 +241,7 @@ def _write_field_value(
 
 def _write_table_data(book: Any, field: Any, rows: list[dict]) -> None:
     """Write table data to a dedicated table sheet."""
-    sheet_name = f"Table - {field.label}"
+    sheet_name = _table_sheet_name(field.label)
     if sheet_name not in [s.name for s in book.sheets]:
         return
 

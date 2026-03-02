@@ -75,6 +75,40 @@ every call. Users click **Reload Scripts** after changing the constants.
 Changing repos requires editing loader.py rather than a cell, but this
 matches the intended use case (fork contributors, not casual users).
 
+## ADR-011: Flat Sheet Names (No Type Prefixes)
+**Date:** 2026-03-02
+**Context:** Sheet names were prefixed with "Data - ", "Optional - ", or
+"Table - " (e.g., "Data - Project Overview", "Table - Line Items"). These
+prefixes consumed 8–9 of the 31-character Excel limit, truncated long group
+names aggressively, and made it harder to look up sheets by label in
+`_read_table_data()` because the prefix had to be reconstructed at read time.
+**Decision:** Remove all type prefixes from `_group_sheet_name()` and
+`_table_sheet_name()` in `engine/excel_plan.py`. Sheet names are now the
+sanitized, truncated group or field label only. `_read_table_data()` in
+`workbook/runner.py` updated to match (`field.label[:31]` instead of
+`f"Table - {field.label}"`).
+**Consequences:** Sheet names are shorter, more readable, and consistent
+with what users see in the data. Lookup is simpler. Any external code or
+saved workbooks that relied on the "Data - " / "Table - " prefix convention
+will need to be updated.
+
+## ADR-012: Row Height Not Set Programmatically
+**Date:** 2026-03-02
+**Context:** `_field_row_instructions()` in `engine/excel_plan.py` set
+`row_height=60` on rows containing multiline fields, and `apply_cell()` in
+`engine/excel_writer.py` applied it via `sheet[row].height = value`. In
+xlwings Lite (Office.js), row height APIs are unreliable and can raise
+exceptions. The fixed height also prevented Excel's auto-fit from working
+after users typed long values.
+**Decision:** Remove the `row_height=60` assignment from
+`_field_row_instructions()`. `apply_cell()` no longer reads or applies
+`CellInstruction.row_height`. The field is retained on `CellInstruction`
+(defaulting to `None`) for backwards compatibility but is ignored.
+**Consequences:** Rows size themselves according to Excel's default or
+auto-fit behavior. No risk of Office.js row-height exceptions. Any future
+intentional row-height control must be re-added deliberately and tested
+against xlwings Lite.
+
 ## ADR-010: Local Development Harness with MockBook
 **Date:** 2026-03-02
 **Context:** Need Claude Code to run the engine pipeline locally and verify

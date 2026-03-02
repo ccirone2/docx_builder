@@ -36,9 +36,9 @@ class TestInitWorkbook:
         book = MockBook()
         init_workbook(book, rfq_schema)
         sheet_names = [s.name for s in book.sheets]
-        # Should have at least one "Data - " or "Optional - " sheet
-        data_sheets = [n for n in sheet_names if n.startswith(("Data -", "Optional -"))]
-        assert len(data_sheets) > 0
+        # Should have group sheets beyond just Control
+        non_control = [n for n in sheet_names if n != "Control"]
+        assert len(non_control) > 0
 
     def test_returns_field_locations(self, rfq_schema: Schema):
         book = MockBook()
@@ -56,8 +56,16 @@ class TestInitWorkbook:
         book = MockBook()
         init_workbook(book, rfq_schema)
         sheet_names = [s.name for s in book.sheets]
-        table_sheets = [n for n in sheet_names if n.startswith("Table -")]
-        assert len(table_sheets) > 0
+        # Table fields get their own sheet named after the field label
+        assert "Work Items - Line Items" in sheet_names
+        assert "Required Documents" in sheet_names
+
+    def test_no_sheet1_after_init(self, rfq_schema: Schema):
+        book = MockBook()
+        book.sheets.add("Sheet1")  # Simulate Excel's default
+        init_workbook(book, rfq_schema)
+        sheet_names = [s.name for s in book.sheets]
+        assert "Sheet1" not in sheet_names
 
 
 # ---------------------------------------------------------------------------

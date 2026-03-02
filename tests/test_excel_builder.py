@@ -15,14 +15,11 @@ def test_plan_sheets_creates_correct_sheet_names(rfq_schema: Schema) -> None:
     """Sheet plan produces expected sheet names for RFQ schema."""
     plan = plan_sheets(rfq_schema)
     assert len(plan.sheets) > 0
-    # Should have data sheets for groups and table sheets
-    assert any("Data" in s for s in plan.sheets)
-    assert any("Table" in s for s in plan.sheets)
-    # Specific expected sheets
-    assert "Data - Issuing Organization" in plan.sheets
-    assert "Data - RFQ Details" in plan.sheets
-    assert "Table - Work Items / Line Items" in plan.sheets
-    assert "Table - Required Documents" in plan.sheets
+    # Specific expected sheets (no prefix)
+    assert "Issuing Organization" in plan.sheets
+    assert "RFQ Details" in plan.sheets
+    assert "Work Items - Line Items" in plan.sheets
+    assert "Required Documents" in plan.sheets
 
 
 def test_plan_group_layout_required_fields(rfq_schema: Schema) -> None:
@@ -87,7 +84,7 @@ def test_plan_table_layout_work_items(rfq_schema: Schema) -> None:
     """work_items table has correct headers and 0 default rows."""
     work_items = rfq_schema.get_field("work_items")
     assert work_items is not None
-    tp = plan_table_layout(work_items, "Table - Work Items")
+    tp = plan_table_layout(work_items, "Work Items")
 
     # Should have 6 header columns
     assert len(tp.headers) == 6
@@ -104,7 +101,7 @@ def test_plan_table_layout_required_docs(rfq_schema: Schema) -> None:
     """required_documents table has 6 default rows."""
     req_docs = rfq_schema.get_field("required_documents")
     assert req_docs is not None
-    tp = plan_table_layout(req_docs, "Table - Required Docs")
+    tp = plan_table_layout(req_docs, "Required Docs")
 
     # 6 default rows in the schema
     assert len(tp.default_rows) == 6
@@ -114,7 +111,7 @@ def test_plan_table_layout_header_count(rfq_schema: Schema) -> None:
     """work_items table plan has one header per column."""
     work_items = rfq_schema.get_field("work_items")
     assert work_items is not None
-    tp = plan_table_layout(work_items, "Table - Work Items")
+    tp = plan_table_layout(work_items, "Work Items")
 
     assert len(tp.headers) == len(work_items.columns)
     assert all(h.is_header for h in tp.headers)
@@ -219,7 +216,7 @@ def test_field_locations_populated(rfq_schema: Schema) -> None:
     # issuer_name is a required field, should be in the index
     assert "issuer_name" in plan.field_locations
     sheet, row, col = plan.field_locations["issuer_name"]
-    assert sheet == "Data - Issuing Organization"
+    assert sheet == "Issuing Organization"
     assert row >= 2
     assert col >= 2
 
