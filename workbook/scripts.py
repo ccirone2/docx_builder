@@ -265,15 +265,16 @@ def init_workbook(book: xw.Book) -> None:
 
     This is the "easy button". Paste the script, click this, done.
     """
+    print(">>> init_workbook called")
     try:
         _build_control_sheet(book)
-        _set_status(book, "[init_workbook] Step 1/5: Fetching registry...")
+        _set_status(book, "Step 1/5: Fetching registry...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
         schema_names = [s["name"] for s in registry.get("schemas", [])]
 
-        _set_status(book, f"[init_workbook] Step 2/5: Found {len(schema_names)} schemas")
+        _set_status(book, f"Step 2/5: Found {len(schema_names)} schemas")
         control = book.sheets["Control"]
         if schema_names:
             control[SCHEMA_DROPDOWN_CELL].value = schema_names[0]
@@ -283,19 +284,19 @@ def init_workbook(book: xw.Book) -> None:
         if selected:
             entry = _find_schema_entry(registry, selected)
             if entry:
-                _set_status(book, f"[init_workbook] Step 3/5: Fetching {entry['name']}...")
+                _set_status(book, f"Step 3/5: Fetching {entry['name']}...")
                 schema_yaml = _fetch(f"schemas/{entry['schema_file']}")
 
-                _set_status(book, "[init_workbook] Step 4/5: Loading engine modules...")
+                _set_status(book, "Step 4/5: Loading engine modules...")
                 loader = _load_module("schema_loader")
                 schema = loader["load_schema_from_text"](schema_yaml)
 
-                _set_status(book, "[init_workbook] Step 5/5: Building sheets...")
+                _set_status(book, "Step 5/5: Building sheets...")
                 builder = _load_module("excel_builder")
                 plan = builder["plan_sheets"](schema)
                 builder["build_sheets"](book, plan)
 
-        _set_status(book, f"[init_workbook] Ready — {len(schema_names)} document types loaded")
+        _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
     except Exception as e:
         try:
@@ -307,8 +308,9 @@ def init_workbook(book: xw.Book) -> None:
 @script(button="[btn_init]Control!B5")
 def initialize_sheets(book: xw.Book) -> None:
     """Fetch registry, populate dropdown, build data entry sheets."""
+    print(">>> initialize_sheets called")
     try:
-        _set_status(book, "[initialize_sheets] Loading...")
+        _set_status(book, "Loading...")
         _get_github_base(book)
 
         registry_text = _fetch("schemas/registry.yaml")
@@ -341,8 +343,9 @@ def initialize_sheets(book: xw.Book) -> None:
 @script(button="[btn_generate]Control!B7")
 def generate_document(book: xw.Book) -> None:
     """Read data, validate, build .docx, trigger download."""
+    print(">>> generate_document called")
     try:
-        _set_status(book, "[generate_document] Generating document...")
+        _set_status(book, "Generating document...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
@@ -384,8 +387,9 @@ def generate_document(book: xw.Book) -> None:
 @script(button="[btn_validate]Control!B9")
 def validate_data(book: xw.Book) -> None:
     """Run validation only, show results in status area."""
+    print(">>> validate_data called")
     try:
-        _set_status(book, "[validate_data] Validating...")
+        _set_status(book, "Validating...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
@@ -422,8 +426,9 @@ def validate_data(book: xw.Book) -> None:
 @script(button="[btn_export]Control!B11")
 def export_data_yaml(book: xw.Book) -> None:
     """Export data to YAML, write to staging cell."""
+    print(">>> export_data_yaml called")
     try:
-        _set_status(book, "[export_data_yaml] Exporting...")
+        _set_status(book, "Exporting...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
@@ -460,8 +465,9 @@ def export_data_yaml(book: xw.Book) -> None:
 @script(button="[btn_import]Control!B13")
 def import_data_yaml(book: xw.Book) -> None:
     """Import YAML data from the staging cell."""
+    print(">>> import_data_yaml called")
     try:
-        _set_status(book, "[import_data_yaml] Importing...")
+        _set_status(book, "Importing...")
 
         control = book.sheets["Control"]
         yaml_text = control[YAML_STAGING_CELL].value
@@ -502,8 +508,9 @@ def import_data_yaml(book: xw.Book) -> None:
 @script(button="[btn_llm]Control!B15")
 def generate_llm_prompt(book: xw.Book) -> None:
     """Generate LLM fill-in prompt, write to staging cell."""
+    print(">>> generate_llm_prompt called")
     try:
-        _set_status(book, "[generate_llm_prompt] Generating LLM prompt...")
+        _set_status(book, "Generating LLM prompt...")
 
         registry_text = _fetch("schemas/registry.yaml")
         registry = yaml.safe_load(registry_text)
@@ -542,8 +549,9 @@ def generate_llm_prompt(book: xw.Book) -> None:
 @script(button="[btn_load_schema]Control!B17")
 def load_custom_schema(book: xw.Book) -> None:
     """Read YAML from staging cell and register as local schema."""
+    print(">>> load_custom_schema called")
     try:
-        _set_status(book, "[load_custom_schema] Loading custom schema...")
+        _set_status(book, "Loading custom schema...")
 
         control = book.sheets["Control"]
         yaml_text = control[YAML_STAGING_CELL].value
@@ -568,8 +576,9 @@ def load_custom_schema(book: xw.Book) -> None:
 @script(button="[btn_load_template]Control!B19")
 def load_custom_template(book: xw.Book) -> None:
     """Read Python template source from staging cell."""
+    print(">>> load_custom_template called")
     try:
-        _set_status(book, "[load_custom_template] Loading custom template...")
+        _set_status(book, "Loading custom template...")
 
         control = book.sheets["Control"]
         source = control[YAML_STAGING_CELL].value
