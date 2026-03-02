@@ -27,6 +27,12 @@
 - All passing, lint clean
 - Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux
 
+### Maintenance
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Plan 1: Stale code cleanup | Done | Dead code, unused constants, obsolete module removed |
+
 ### Backlog
 
 - [ ] More schemas: Change Order, Bid Tabulation, Safety Plan

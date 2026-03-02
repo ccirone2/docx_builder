@@ -125,22 +125,6 @@ def save_docx_local(doc: Any, filename: str) -> bytes:
     return byte_data
 
 
-def bytes_to_base64_data_uri(data: bytes, mime_type: str) -> str:
-    """Convert bytes to a base64 data URI.
-
-    Useful as an alternative download method or for embedding in HTML.
-
-    Args:
-        data: Raw bytes.
-        mime_type: MIME type string.
-
-    Returns:
-        Data URI string.
-    """
-    b64 = base64.b64encode(data).decode("ascii")
-    return f"data:{mime_type};base64,{b64}"
-
-
 def generate_and_download(
     schema: Any,
     data: dict,

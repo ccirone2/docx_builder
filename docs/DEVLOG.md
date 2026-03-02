@@ -181,3 +181,35 @@ runtime feedback in the workbook scripts.
 **Files deleted:** workbook/scripts.py
 **Files modified:** workbook/runner.py, workbook/loader.py,
   workbook/README.md, ARCHITECTURE.md, docs/DECISIONS.md
+
+## 2026-03-02 — Stale Code Cleanup (Plan 1)
+
+Removed dead code, unused constants, and an obsolete module across four
+engine files. All changes verified with 96 passing tests and clean lint.
+
+### engine/schema_loader.py
+- Removed dead `return ValidationResult(...)` at end of
+  `_validate_single_field()`. The function mutates `errors`/`warnings`
+  lists in place; callers never use the return value. Changed return
+  type annotation to `-> None`.
+- Added one-line Google-style docstrings to 5 properties/methods that
+  were missing them: `is_table`, `is_compound`, `all_groups`,
+  `get_table_fields`, `get_compound_fields`.
+
+### engine/config.py
+- Removed 9 unused constants with zero references in the codebase:
+  `SCHEMA_SOURCE`, `DEFAULT_DATE_FORMAT`, `PLACEHOLDER_OPEN`,
+  `PLACEHOLDER_CLOSE`, `DEFAULT_FONT`, `DEFAULT_FONT_SIZE_PT`,
+  `TEMPLATE_STRATEGY`, `STRICT_VALIDATION`, `LOG_LEVEL`.
+- Removed associated section header comments for now-empty sections.
+
+### engine/file_bridge.py
+- Removed `bytes_to_base64_data_uri()` function (zero callers).
+
+### engine/template_registry.py
+- Deleted entire 68-line file. Not imported anywhere, no tests,
+  superseded by programmatic generation (ADR-007).
+
+**Files deleted:** engine/template_registry.py
+**Files modified:** engine/schema_loader.py, engine/config.py,
+  engine/file_bridge.py
