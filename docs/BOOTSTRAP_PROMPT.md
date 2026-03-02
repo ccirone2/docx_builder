@@ -1,3 +1,7 @@
+> **Historical context:** This document was the original bootstrap prompt used
+> to build the project from scratch. Phases A–H are now complete. See
+> `docs/PLAN.md` for current status and `docs/DEVLOG.md` for session history.
+
 You are completing the build of **docx_builder** — an open-source, template-driven document generator for the electric utility industry. Excel (xlwings Lite / Pyodide) handles data entry, Python generates Word .docx files. Everything runs in-browser via WebAssembly — zero Python install.
 
 ## What already exists in the repo

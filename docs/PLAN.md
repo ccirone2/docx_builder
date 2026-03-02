@@ -19,11 +19,11 @@
 | E | Browser download bridge | ✅ Done | generate_and_download pipeline |
 | F | Workbook bootstrap | ✅ Done | xlwings Lite scripts |
 | G | Local customization & validation | ✅ Done | Custom schemas, validation UX |
-| H | Finalization | ✅ Done | 56 tests, lint clean, docs updated |
+| H | Finalization | ✅ Done | 64 tests, lint clean, docs updated |
 
 ### Test Summary
 
-- 56 tests across 7 test files
+- 64 tests across 7 test files (+ conftest.py)
 - All passing, lint clean
 - Coverage: schema_loader, data_exchange, github_loader, excel_builder, doc_generator, file_bridge, validation_ux
 

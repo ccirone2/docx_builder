@@ -35,7 +35,7 @@ Before ending ANY session, always:
 - Use dataclasses, not raw dicts, for structured data
 - Docstrings on all public functions (Google style)
 - Keep modules under 400 lines; split if larger
-- No `print()` in library code — use return values; `print()` only in CLI blocks
+- No `print()` in library code — use `engine.log` helpers; `print()` only in CLI blocks
 
 ## Git Conventions
 - Branch naming: `feature/xxx`, `fix/xxx`, `docs/xxx`
@@ -49,7 +49,14 @@ Before ending ANY session, always:
 - `engine/data_exchange.py` — YAML import/export, LLM prompts, redaction
 - `engine/github_loader.py` — Fetch schemas/templates from GitHub + local
 - `engine/config.py` — Pyodide-aware settings
+- `engine/log.py` — Timestamped logging (DEBUG/INFO/WARN/ERROR)
+- `engine/doc_generator.py` — python-docx document generation
+- `engine/excel_builder.py` — Schema-driven Excel sheet planning
 - `engine/file_bridge.py` — Pyodide → browser download via JS bridge
+- `engine/validation_ux.py` — Color-coded validation reports
+- `engine/template_registry.py` — Schema ↔ template mapping
+- `workbook/loader.py` — Stable xlwings Lite bootstrap (paste once)
+- `workbook/runner.py` — Business logic (fetched at runtime from GitHub)
 - `schemas/registry.yaml` — Master index of document types
 - `schemas/rfq_electric_utility.yaml` — RFQ schema (36 fields, 9 groups)
 
