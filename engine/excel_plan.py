@@ -1,31 +1,28 @@
 """
-excel_builder.py — Build Excel data entry sheets from a schema definition.
+excel_plan.py — Pure logic layer for Excel sheet planning.
 
-Two-layer design:
-  1. Pure logic layer (testable): computes sheet layouts, cell positions,
-     dropdown lists, and formatting instructions as data structures.
-  2. xlwings adapter layer (runtime only): writes those data structures
-     to actual Excel sheets via the xlwings API.
+Computes sheet layouts, cell positions, dropdown lists, and formatting
+instructions as data structures. No xlwings dependency — fully testable
+and Pyodide-compatible.
+
+Split from excel_builder.py for module size. See also:
+  - excel_control.py — Control sheet layout planning
+  - excel_writer.py — xlwings adapter layer
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field as dc_field
 from typing import Any
 
 from engine.config import (
     HEADER_COLOR,
     HEADER_FONT_COLOR,
-    IS_PYODIDE,
     OPTIONAL_BG_COLOR,
     REQUIRED_INDICATOR_COLOR,
 )
 from engine.schema_loader import FieldDef, Schema
-
-# --- Default GitHub base URL (used by plan_control_sheet) ---
-_DEFAULT_GITHUB_BASE = (
-    "https://raw.githubusercontent.com/ccirone2/docx_builder/main"
-)
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -49,6 +46,7 @@ class CellInstruction:
     dropdown_choices: list[str] | None = None
     is_header: bool = False
     note: str = ""
+    field_key: str = ""  # FieldDef.key for data-entry value cells
 
 
 @dataclass
@@ -57,6 +55,8 @@ class SheetPlan:
 
     sheets: list[str]
     instructions: list[CellInstruction]
+    field_locations: dict[str, tuple[str, int, int]] = dc_field(default_factory=dict)
+    # Maps field_key → (sheet_name, row, value_col) for O(1) reads
 
 
 @dataclass
@@ -110,7 +110,7 @@ def plan_sheets(schema: Schema) -> SheetPlan:
         schema: The active schema definition.
 
     Returns:
-        SheetPlan with sheet names and cell instructions.
+        SheetPlan with sheet names, cell instructions, and field_locations index.
     """
     sheets: list[str] = []
     instructions: list[CellInstruction] = []
@@ -159,127 +159,13 @@ def plan_sheets(schema: Schema) -> SheetPlan:
                     for row in tp.default_rows:
                         instructions.extend(row)
 
-    return SheetPlan(sheets=sheets, instructions=instructions)
+    # Build field→location index from instructions
+    locations: dict[str, tuple[str, int, int]] = {}
+    for instr in instructions:
+        if instr.field_key:
+            locations[instr.field_key] = (instr.sheet, instr.row, instr.col)
 
-
-# ---------------------------------------------------------------------------
-# Pure logic layer — plan_control_sheet
-# ---------------------------------------------------------------------------
-
-
-def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
-    """Compute cell instructions for the Control sheet layout.
-
-    Creates the full Control sheet with title, document-type selector,
-    status area, configuration section, and YAML staging area. This
-    is the "easy button" — call once to scaffold the entire UI.
-
-    Args:
-        github_base: GitHub raw content URL for the config area.
-            Defaults to the project's public repo URL.
-
-    Returns:
-        List of CellInstruction for the Control sheet.
-    """
-    sheet = "Control"
-    url = github_base or _DEFAULT_GITHUB_BASE
-    instrs: list[CellInstruction] = []
-
-    # --- Title banner (Row 1, A1:F1) ---
-    instrs.append(
-        CellInstruction(
-            sheet=sheet,
-            row=1,
-            col=1,
-            value="DOCUMENT GENERATOR",
-            bold=True,
-            bg_color=HEADER_COLOR,
-            font_color=HEADER_FONT_COLOR,
-            merge_cols=6,
-            is_header=True,
-        )
-    )
-
-    # --- Row 3: Document Type selector + status ---
-    instrs.append(
-        CellInstruction(
-            sheet=sheet, row=3, col=1, value="Document Type:", bold=True,
-        )
-    )
-    # B3: dropdown cell (populated later by initialize_sheets)
-    instrs.append(
-        CellInstruction(sheet=sheet, row=3, col=2, value="")
-    )
-
-    # --- Button label rows (A column, next to xlwings button widgets) ---
-    button_labels = [
-        (5, "Initialize Sheets"),
-        (7, "Generate Document"),
-        (9, "Validate Data"),
-        (11, "Export Data (YAML)"),
-        (13, "Import Data (YAML)"),
-        (15, "Generate LLM Prompt"),
-        (17, "Load Custom Schema"),
-        (19, "Load Custom Template"),
-    ]
-    for row, label in button_labels:
-        instrs.append(
-            CellInstruction(
-                sheet=sheet, row=row, col=1, value=label, bold=True,
-            )
-        )
-
-    # --- Configuration section (Row 10+) ---
-    instrs.append(
-        CellInstruction(
-            sheet=sheet,
-            row=10,
-            col=3,
-            value="CONFIGURATION",
-            bold=True,
-            bg_color=OPTIONAL_BG_COLOR,
-            merge_cols=2,
-        )
-    )
-    instrs.append(
-        CellInstruction(
-            sheet=sheet, row=12, col=3, value="GitHub Repo URL:",
-        )
-    )
-    instrs.append(
-        CellInstruction(sheet=sheet, row=12, col=4, value=url)
-    )
-
-    # --- Redact toggle (Row 16) ---
-    instrs.append(
-        CellInstruction(
-            sheet=sheet, row=16, col=3, value="Redact on Export:",
-        )
-    )
-    instrs.append(
-        CellInstruction(
-            sheet=sheet,
-            row=16,
-            col=4,
-            value="TRUE",
-            dropdown_choices=["TRUE", "FALSE"],
-        )
-    )
-
-    # --- YAML staging section (Row 18+) ---
-    instrs.append(
-        CellInstruction(
-            sheet=sheet,
-            row=18,
-            col=3,
-            value="YAML STAGING AREA",
-            bold=True,
-            bg_color=OPTIONAL_BG_COLOR,
-            merge_cols=2,
-        )
-    )
-
-    return instrs
+    return SheetPlan(sheets=sheets, instructions=instructions, field_locations=locations)
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +292,7 @@ def _field_row_instructions(
             merge_cols=merge,
             row_height=row_height,
             dropdown_choices=dropdown,
+            field_key=field.key,
         )
     )
 
@@ -497,93 +384,3 @@ def plan_table_layout(field: FieldDef, sheet_name: str) -> TablePlan:
         headers=headers,
         default_rows=default_rows,
     )
-
-
-# ---------------------------------------------------------------------------
-# xlwings adapter layer (runtime only, not unit tested)
-# ---------------------------------------------------------------------------
-
-
-def build_sheets(book: Any, plan: SheetPlan) -> None:
-    """Create sheets and write all cell instructions to an xlwings Book.
-
-    Each cell write is individually guarded so that one failure does
-    not prevent the remaining cells from being written.
-
-    Args:
-        book: An xlwings Book object.
-        plan: The SheetPlan to execute.
-    """
-    for sheet_name in plan.sheets:
-        if sheet_name not in [s.name for s in book.sheets]:
-            book.sheets.add(sheet_name)
-
-    for instr in plan.instructions:
-        try:
-            sheet = book.sheets[instr.sheet]
-            apply_cell(sheet, instr)
-        except Exception:
-            pass
-
-
-def apply_cell(sheet: Any, instr: CellInstruction) -> None:
-    """Write a single cell to an xlwings Sheet with formatting.
-
-    In xlwings Lite the Office.js bridge batches all operations and
-    syncs them when Python returns.  If any single queued operation
-    is invalid the **entire** batch is rolled back — including value
-    writes.  Python ``try/except`` cannot catch these because the
-    error is raised asynchronously in JavaScript, not in Python.
-
-    In Pyodide mode we therefore write **values only** and skip all
-    formatting to avoid poisoning the batch.  Formatting operations
-    are applied only when running in desktop xlwings.
-
-    Args:
-        sheet: An xlwings Sheet object.
-        instr: The CellInstruction to apply.
-    """
-    cell = sheet.range((instr.row, instr.col))
-    cell.value = instr.value
-
-    # In Pyodide / xlwings Lite, skip ALL formatting to prevent
-    # invalid Office.js operations from rolling back value writes.
-    if IS_PYODIDE:
-        return
-
-    # --- Desktop xlwings formatting (best-effort) ---
-    try:
-        if instr.bold:
-            cell.font.bold = True
-    except Exception:
-        pass
-
-    try:
-        if instr.bg_color:
-            cell.color = instr.bg_color
-    except Exception:
-        pass
-
-    try:
-        if instr.font_color:
-            cell.font.color = instr.font_color
-    except Exception:
-        pass
-
-    try:
-        if instr.number_format:
-            cell.number_format = instr.number_format
-    except Exception:
-        pass
-
-    try:
-        if instr.row_height:
-            cell.row_height = instr.row_height
-    except Exception:
-        pass
-
-    try:
-        if instr.note:
-            cell.note.text = instr.note
-    except Exception:
-        pass

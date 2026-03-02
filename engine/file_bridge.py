@@ -15,15 +15,10 @@ from __future__ import annotations
 
 import base64
 import io
-import sys
 from typing import Any
 
 from engine import log
-
-
-def is_pyodide() -> bool:
-    """Check if we're running inside Pyodide (WebAssembly)."""
-    return sys.platform == "emscripten"
+from engine.config import IS_PYODIDE
 
 
 def trigger_docx_download(doc, filename: str = "document.docx"):
@@ -38,7 +33,7 @@ def trigger_docx_download(doc, filename: str = "document.docx"):
     doc.save(buffer)
     byte_data = buffer.getvalue()
 
-    if is_pyodide():
+    if IS_PYODIDE:
         _browser_download(
             byte_data,
             filename,
@@ -55,7 +50,7 @@ def trigger_bytes_download(data: bytes, filename: str, mime_type: str = "applica
     """
     Generic download trigger for any byte data.
     """
-    if is_pyodide():
+    if IS_PYODIDE:
         _browser_download(data, filename, mime_type)
     else:
         with open(filename, "wb") as f:
@@ -165,7 +160,7 @@ def generate_and_download(
     if filename is None:
         filename = f"{schema.id}.docx"
 
-    if is_pyodide():
+    if IS_PYODIDE:
         _browser_download(
             byte_data,
             filename,

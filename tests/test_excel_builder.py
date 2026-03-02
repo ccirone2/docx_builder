@@ -1,13 +1,13 @@
-"""Tests for engine/excel_builder.py — pure logic layer."""
+"""Tests for engine/excel_plan.py and engine/excel_control.py — pure logic layer."""
 from __future__ import annotations
 
-from engine.excel_builder import (
+from engine.excel_plan import (
     CellInstruction,
-    plan_control_sheet,
     plan_group_layout,
     plan_sheets,
     plan_table_layout,
 )
+from engine.excel_control import plan_control_sheet
 from engine.schema_loader import Schema
 
 
@@ -205,3 +205,41 @@ def test_plan_control_sheet_has_yaml_staging() -> None:
     instrs = plan_control_sheet()
     staging = [i for i in instrs if i.value == "YAML STAGING AREA"]
     assert len(staging) == 1
+
+
+# ---------------------------------------------------------------------------
+# field_locations index tests
+# ---------------------------------------------------------------------------
+
+
+def test_field_locations_populated(rfq_schema: Schema) -> None:
+    """plan_sheets populates field_locations with non-table field keys."""
+    plan = plan_sheets(rfq_schema)
+    assert len(plan.field_locations) > 0
+    # issuer_name is a required field, should be in the index
+    assert "issuer_name" in plan.field_locations
+    sheet, row, col = plan.field_locations["issuer_name"]
+    assert sheet == "Data - Issuing Organization"
+    assert row >= 2
+    assert col >= 2
+
+
+def test_field_locations_match_instructions(rfq_schema: Schema) -> None:
+    """Every field_locations entry corresponds to an instruction with field_key."""
+    plan = plan_sheets(rfq_schema)
+    keyed_instrs = {i.field_key: i for i in plan.instructions if i.field_key}
+    for key, (sheet, row, col) in plan.field_locations.items():
+        assert key in keyed_instrs
+        instr = keyed_instrs[key]
+        assert instr.sheet == sheet
+        assert instr.row == row
+        assert instr.col == col
+
+
+def test_field_key_on_value_cells(rfq_schema: Schema) -> None:
+    """Value cells (not headers) carry field_key for data-entry fields."""
+    plan = plan_sheets(rfq_schema)
+    keyed = [i for i in plan.instructions if i.field_key]
+    assert len(keyed) > 0
+    # None of the keyed instructions should be headers
+    assert all(not i.is_header for i in keyed)

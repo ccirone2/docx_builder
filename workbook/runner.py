@@ -23,6 +23,7 @@ GITHUB_BASE = (
 )
 _cache: dict[str, str] = {}
 _engine: dict[str, dict] = {}
+_field_index: dict[str, tuple[str, int, int]] = {}  # field_key → (sheet, row, col)
 
 # Cell addresses on the Control sheet
 SCHEMA_DROPDOWN_CELL = "B3"
@@ -33,11 +34,14 @@ _MODULE_DEPS: dict[str, list[str]] = {
     "log": [],
     "config": [],
     "schema_loader": ["log"],
-    "excel_builder": ["config", "schema_loader"],
+    "excel_plan": ["config", "schema_loader"],
+    "excel_control": ["config", "excel_plan"],
+    "excel_writer": ["config", "excel_plan"],
     "data_exchange": ["log", "schema_loader"],
+    "llm_helpers": ["schema_loader", "data_exchange"],
     "doc_generator": ["log", "schema_loader"],
     "validation_ux": ["schema_loader"],
-    "file_bridge": ["log"],
+    "file_bridge": ["log", "config"],
     "github_loader": ["log"],
 }
 
@@ -187,7 +191,19 @@ def _read_data_from_sheets(book: Any, schema: Any) -> dict[str, Any]:
 
 
 def _read_field_value(book: Any, field: Any) -> Any:
-    """Read a single field value from its sheet location."""
+    """Read a single field value using cached location or fallback scan.
+
+    Uses the _field_index built during sheet initialization for O(1)
+    lookup. Falls back to scanning if the index wasn't populated
+    (e.g., sheets built before index support was added).
+    """
+    loc = _field_index.get(field.key)
+    if loc:
+        sheet_name, row, col = loc
+        if sheet_name in [s.name for s in book.sheets]:
+            return book.sheets[sheet_name].range((row, col)).value
+
+    # Fallback: scan (handles sheets built before index was cached)
     for sheet in book.sheets:
         for row in range(2, 100):
             cell_value = sheet.range((row, 1)).value
@@ -327,9 +343,11 @@ def init_workbook(book: Any) -> None:
                 schema = loader["load_schema_from_text"](schema_yaml)
 
                 _set_status(book, "Step 5/5: Building sheets...")
-                builder = _load_module("excel_builder")
-                plan = builder["plan_sheets"](schema)
-                builder["build_sheets"](book, plan)
+                planner = _load_module("excel_plan")
+                plan = planner["plan_sheets"](schema)
+                writer = _load_module("excel_writer")
+                writer["build_sheets"](book, plan)
+                _field_index.update(plan.field_locations)
 
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
@@ -369,9 +387,11 @@ def initialize_sheets(book: Any) -> None:
                 loader = _load_module("schema_loader")
                 schema = loader["load_schema_from_text"](schema_yaml)
 
-                builder = _load_module("excel_builder")
-                plan = builder["plan_sheets"](schema)
-                builder["build_sheets"](book, plan)
+                planner = _load_module("excel_plan")
+                plan = planner["plan_sheets"](schema)
+                writer = _load_module("excel_writer")
+                writer["build_sheets"](book, plan)
+                _field_index.update(plan.field_locations)
 
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 
@@ -481,8 +501,8 @@ def generate_llm_prompt(book: Any) -> None:
             return
         schema, entry = result
         data = _read_data_from_sheets(book, schema)
-        exchange = _load_module("data_exchange")
-        prompt = exchange["generate_llm_prompt"](schema, existing_data=data, redact=True)
+        llm = _load_module("llm_helpers")
+        prompt = llm["generate_llm_prompt"](schema, existing_data=data, redact=True)
         control = book.sheets["Control"]
         control[YAML_STAGING_CELL].value = prompt
         _set_status(book, "LLM prompt generated (see staging cell)")

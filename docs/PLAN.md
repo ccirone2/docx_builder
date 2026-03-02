@@ -35,6 +35,7 @@
 | Plan 2: Documentation reconciliation | Done | ARCHITECTURE.md, CLAUDE.md, schema YAML template fields |
 | Plan 3: Test coverage expansion | Done | 32 new tests across 4 new files (config, doc helpers, edge cases, integration) |
 | Plan 4: Code refactoring | Done | _prepare_schema() helper, dead code removal in github_loader/data_exchange |
+| Plan 5: Module splits & performance | Done | excel_builder→3 modules, data_exchange+llm_helpers split, IS_PYODIDE consolidation, O(1) field index in runner |
 
 ### Backlog
 

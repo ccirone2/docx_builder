@@ -251,3 +251,59 @@ quality review.
 **Files created:** tests/test_config.py, tests/test_doc_helpers.py,
   tests/test_edge_cases.py, tests/test_integration.py
 **Test count:** 96 tests (was 64), all passing, lint clean
+
+## 2026-03-02 — Module Splits and Performance (Plan 5)
+
+Four refactoring tasks to reduce module size, eliminate duplication, and
+improve field-lookup performance in the workbook runner.
+
+### Task A: Consolidated is_pyodide()
+- Removed the `is_pyodide()` function from `engine/file_bridge.py`.
+  The function duplicated the detection logic already in `engine/config.py`.
+- `file_bridge.py` now imports `IS_PYODIDE` (a module-level constant)
+  from `engine/config.py` and uses it directly: `if IS_PYODIDE:`.
+- Removed the now-unused `import sys` from `file_bridge.py`.
+- All 3 call sites inside `file_bridge.py` updated from `if is_pyodide():`
+  to `if IS_PYODIDE:`.
+
+### Task B: Split data_exchange.py → data_exchange.py + llm_helpers.py
+- `engine/data_exchange.py` reduced from 621 to 312 lines. Retains YAML
+  formatting, redaction, export (`export_data_yaml`), and import
+  (`import_data_yaml`). LLM logic removed.
+- `engine/llm_helpers.py` (NEW, ~260 lines): houses `generate_llm_prompt()`
+  and `generate_schema_reference()`.
+- `tests/test_data_exchange.py` updated: LLM functions now imported from
+  `engine.llm_helpers` instead of `engine.data_exchange`.
+
+### Task C: 3-way split of excel_builder.py
+- `engine/excel_builder.py` (589 lines) deleted entirely.
+- `engine/excel_plan.py` (NEW, ~340 lines): dataclasses `CellInstruction`,
+  `SheetPlan`, `TablePlan`, and planning functions `plan_sheets()`,
+  `plan_group_layout()`, `plan_table_layout()`. Added `field_key: str = ""`
+  field to `CellInstruction` and `field_locations: dict[str, tuple[str, int, int]]`
+  to `SheetPlan` for O(1) field address lookups.
+- `engine/excel_control.py` (NEW, ~130 lines): `plan_control_sheet()`
+  function for generating the Control sheet layout.
+- `engine/excel_writer.py` (NEW, ~95 lines): xlwings adapter functions
+  `build_sheets()` and `apply_cell()`.
+- `tests/test_excel_builder.py` updated to import from the three new modules.
+  3 new tests added to cover `field_locations` population.
+
+### Task D: Updated runner.py
+- `_MODULE_DEPS` dependency graph updated: replaced `excel_builder` with
+  `excel_plan`, `excel_control`, `excel_writer`; added `llm_helpers`; added
+  `config` as a dependency of `file_bridge`.
+- Added module-level `_field_index: dict[str, tuple[str, int, int]]` cache.
+- `_read_field_value()` now does O(1) lookup via `_field_index` with a full
+  scan fallback for safety.
+- `init_workbook()` and `initialize_sheets()` populate `_field_index` after
+  calling `build_sheets()`.
+- `generate_llm_prompt()` now loads `llm_helpers` module instead of
+  `data_exchange`.
+
+**Files deleted:** engine/excel_builder.py
+**Files created:** engine/llm_helpers.py, engine/excel_plan.py,
+  engine/excel_control.py, engine/excel_writer.py
+**Files modified:** engine/data_exchange.py, engine/file_bridge.py,
+  workbook/runner.py, tests/test_data_exchange.py, tests/test_excel_builder.py,
+  ARCHITECTURE.md, CLAUDE.md, docs/PLAN.md

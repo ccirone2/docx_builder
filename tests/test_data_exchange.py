@@ -1,11 +1,13 @@
-"""Tests for engine/data_exchange.py."""
+"""Tests for engine/data_exchange.py and engine/llm_helpers.py."""
 from __future__ import annotations
 
 from engine.data_exchange import (
     export_snapshot,
+    import_snapshot,
+)
+from engine.llm_helpers import (
     generate_llm_prompt,
     generate_schema_reference,
-    import_snapshot,
 )
 from engine.schema_loader import Schema
 
