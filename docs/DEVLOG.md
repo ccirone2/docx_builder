@@ -469,3 +469,79 @@ migrate all YAML import/export and LLM prompt generation to SCN:
 
 **Issues modified:** #14 (amended), #15 (created)
 **No code changes** — planning only
+
+## 2026-03-03 — Issue #14 implementation plan
+
+Broke issue #14 ("Revamp data entry sheets") into 5 discrete tasks,
+each scoped to 1–2 hours with clear file lists and dependencies:
+
+| Task | Issue | Summary | Depends on |
+|------|-------|---------|------------|
+| 14a  | #16   | SCN parser module + ≥20 tests | — |
+| 14b  | #17   | Rewrite excel_plan.py for single-column SCN | #16 |
+| 14c  | #18   | Writer styling + control sheet label renames | #17 |
+| 14d  | #19   | Replace cell-coordinate readers with SCN parser | #16, #17 |
+| 14e  | #20   | Integration testing + docs + cleanup | #16–#19 |
+
+Key design decisions captured in the plan:
+- `field_locations` kept for the write path (targeted cell writes)
+- `CellInstruction.merge_cols` and `dropdown_choices` to be removed (never
+  implemented in writer)
+- `REQUIRED_INDICATOR_COLOR` and col-6 asterisks removed entirely
+- Unused sheet constants (`SHEET_DATA_CORE`, etc.) cleaned up
+- Control sheet "YAML STAGING AREA" → "DATA STAGING AREA"
+
+**Files modified:** docs/PLAN.md, docs/DEVLOG.md
+**Issues created:** #16, #17, #18, #19, #20
+**No code changes** — planning only
+
+## 2026-03-03 — Issue #14: Single-column SCN data entry layout
+
+Implemented all 5 sub-tasks (#16–#20) for issue #14. Replaced the multi-column
+label/value Excel layout with single-column SCN (Single-Column Notation) in
+column A. 215 tests pass (up from 160), lint clean, full harness pipeline works.
+
+### Task 14a: SCN parser module (#16)
+- Created `engine/scn.py` with `parse()`, `parse_entry()`, `serialize()`,
+  `read_excel()`, `read_text()`, and nested-dict helpers
+- `parse_entry()` is the key innovation: always consumes the next cell after
+  `key:` as the value (even if empty), solving the empty-cell problem in data
+  entry sheets where `parse()` would skip empty lines
+- Created `tests/test_scn.py` with 44 tests across 10 classes
+
+### Task 14b: Rewrite excel_plan.py (#17)
+- `engine/config.py`: Added `SHEET_DATA_ENTRY`, `SCN_COMMENT_PREFIX`; removed
+  `SHEET_DATA_CORE`, `SHEET_DATA_OPTIONAL`, `SHEET_DATA_FLEXIBLE`,
+  `SHEET_TABLES_PREFIX`, `REQUIRED_INDICATOR_COLOR`
+- `engine/excel_plan.py`: Complete rewrite — single "Data Entry" sheet with
+  `[Group Name]` section headers, `;; Label *` comments, `key:` declarations,
+  and empty value cells, all in column 1
+- `CellInstruction` simplified (removed `merge_cols`, `dropdown_choices`)
+- `SheetPlan` simplified (removed `field_locations`)
+- Rewrote `tests/test_excel_builder.py` for SCN layout assertions
+
+### Task 14c: Control sheet labels (#18)
+- `engine/excel_control.py`: Renamed "YAML STAGING AREA" → "DATA STAGING AREA"
+- Removed `merge_cols` and `dropdown_choices` from control sheet instructions
+
+### Task 14d: SCN-based readers/writers (#19)
+- `dev/local_runner.py`: Complete rewrite — `read_data()` uses `parse_entry()`
+  on column A, `fill_data()` scans for `key:` rows. Removed `field_locations`
+  from all signatures. Removed `_read_field_value()`, `_read_compound_data()`,
+  `_write_field_value()`, `_write_compound_data()`
+- `workbook/runner.py`: Added `scn` to `_MODULE_DEPS`, removed `_field_index`,
+  rewrote readers to use SCN parser, renamed staging area
+- `dev/harness.py`: Removed all `field_locations` references
+- Rewrote `tests/test_local_runner.py` for new API
+
+### Task 14e: Integration + cleanup (#20)
+- Fixed `tests/test_config.py` (removed `REQUIRED_INDICATOR_COLOR` import)
+- Full harness pipeline: init → verify → fill → validate all pass
+- Added ADR-013 for SCN adoption
+
+**Files created:** engine/scn.py, tests/test_scn.py
+**Files modified:** engine/config.py, engine/excel_plan.py,
+  engine/excel_control.py, dev/local_runner.py, dev/harness.py,
+  workbook/runner.py, tests/test_config.py, tests/test_excel_builder.py,
+  tests/test_local_runner.py, docs/PLAN.md, docs/DEVLOG.md, docs/DECISIONS.md
+**Test count:** 215 tests across 14 files (up from 160)

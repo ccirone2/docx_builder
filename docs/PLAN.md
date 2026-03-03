@@ -1,26 +1,28 @@
 # Development Plan
 
-## Status: All Core Phases Complete
+## Status: Issue #14 Complete
 
-All 12 build phases (1, 1b, 2a, A–H) and 5 maintenance plans are done.
-149 tests across 12 files, all passing, lint clean.
-See `docs/DEVLOG.md` for detailed history of each phase.
+**Issue:** [#14 — Revamp data entry sheets: single-column SCN layout](https://github.com/ccirone2/docx_builder/issues/14)
 
-## Recently Completed (2026-03-02)
+All 12 build phases (1, 1b, 2a, A–H), 5 maintenance plans, and issue #14 done.
+215 tests across 14 files, all passing, lint clean.
 
-- [x] Local development harness (`dev/` package): MockBook, local_runner,
-      CLI harness, sample data — 50 new tests (ADR-010)
-- [x] Sheet name prefixes removed from `_group_sheet_name()` and
-      `_table_sheet_name()` in `engine/excel_plan.py`
-- [x] Sheets appended in order via `after=book.sheets[-1]` in
-      `engine/excel_writer.py`
-- [x] Sheet1 auto-deletion in `dev/local_runner.py` and `workbook/runner.py`
-- [x] Row height removed from `_field_row_instructions()` and `apply_cell()`
-- [x] Sheet name sanitization bug fixed in `_truncate_sheet_name()`
+---
 
-## Backlog
+## Issue #14 — Tasks (all complete)
+
+- ✅ **14a** (#16): SCN parser module — `engine/scn.py` + 44 tests
+- ✅ **14b** (#17): Rewrite `excel_plan.py` for single-column SCN layout
+- ✅ **14c** (#18): Update `excel_control.py` labels (DATA STAGING AREA)
+- ✅ **14d** (#19): Replace cell-coordinate readers with SCN parser
+- ✅ **14e** (#20): Integration testing + final cleanup
+
+---
+
+## Backlog (unchanged)
 
 - [ ] More schemas: Change Order, Bid Tabulation, Safety Plan
 - [ ] Template system v2: docxtpl hosted templates
 - [ ] Contribution tooling: schema/template validation CLI
 - [ ] Workbook distribution: pre-built .xlsx with embedded scripts
+- [ ] Issue #15: Replace YAML data exchange with SCN text format (depends on #14)

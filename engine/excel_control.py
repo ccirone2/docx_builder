@@ -2,7 +2,7 @@
 excel_control.py — Control sheet layout planning.
 
 Computes the cell instructions for the Control sheet (title banner,
-document-type selector, button labels, configuration area, YAML staging).
+document-type selector, button labels, configuration area, data staging).
 
 Split from excel_builder.py for module size. See also:
   - excel_plan.py — Data entry sheet planning + dataclasses
@@ -26,7 +26,7 @@ def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
     """Compute cell instructions for the Control sheet layout.
 
     Creates the full Control sheet with title, document-type selector,
-    status area, configuration section, and YAML staging area. This
+    status area, configuration section, and data staging area. This
     is the "easy button" — call once to scaffold the entire UI.
 
     Args:
@@ -50,7 +50,6 @@ def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
             bold=True,
             bg_color=HEADER_COLOR,
             font_color=HEADER_FONT_COLOR,
-            merge_cols=6,
             is_header=True,
         )
     )
@@ -99,7 +98,6 @@ def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
             value="CONFIGURATION",
             bold=True,
             bg_color=OPTIONAL_BG_COLOR,
-            merge_cols=2,
         )
     )
     instrs.append(
@@ -127,20 +125,18 @@ def plan_control_sheet(github_base: str = "") -> list[CellInstruction]:
             row=16,
             col=4,
             value="TRUE",
-            dropdown_choices=["TRUE", "FALSE"],
         )
     )
 
-    # --- YAML staging section (Row 18+) ---
+    # --- Data staging section (Row 18+) ---
     instrs.append(
         CellInstruction(
             sheet=sheet,
             row=18,
             col=3,
-            value="YAML STAGING AREA",
+            value="DATA STAGING AREA",
             bold=True,
             bg_color=OPTIONAL_BG_COLOR,
-            merge_cols=2,
         )
     )
 
