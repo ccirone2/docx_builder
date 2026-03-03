@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '📋 Current plan:' && head -50 docs/PLAN.md 2>/dev/null || echo 'No plan yet.' && echo '' && echo '📝 Recent dev log:' && tail -30 docs/DEVLOG.md 2>/dev/null || echo 'No log yet.' && echo '' && echo '🔀 Git status:' && git status --short && echo '' && echo '📌 Open issues:' && gh issue list --limit 5 2>/dev/null || echo 'gh CLI not configured'",
+            "command": "echo '📋 Current plan:' && head -50 docs/PLAN.md 2>/dev/null || echo 'No plan yet.' && echo '' && echo '📝 Recent dev log:' && tail -30 docs/DEVLOG.md 2>/dev/null || echo 'No log yet.' && echo '' && echo '🔀 Git status:' && echo \"Branch: $(git branch --show-current) (default: develop)\" && git status --short && echo '' && echo '📌 Open issues:' && gh issue list --limit 5 2>/dev/null || echo 'gh CLI not configured'",
             "timeout": 10
           }
         ]

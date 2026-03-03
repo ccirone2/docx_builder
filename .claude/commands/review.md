@@ -2,7 +2,7 @@
 
 Review the recent changes for quality and correctness.
 
-1. Run `git diff main --stat` to see what changed
+1. Run `git diff develop --stat` to see what changed
 2. For each modified file, check:
    - Type hints on all function signatures
    - Docstrings on all public functions
