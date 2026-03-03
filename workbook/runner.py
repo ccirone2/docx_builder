@@ -23,7 +23,6 @@ GITHUB_BASE = (
 )
 _cache: dict[str, str] = {}
 _engine: dict[str, dict] = {}
-_field_index: dict[str, tuple[str, int, int]] = {}  # field_key → (sheet, row, col)
 
 # Cell addresses on the Control sheet
 SCHEMA_DROPDOWN_CELL = "B3"
@@ -34,6 +33,7 @@ _MODULE_DEPS: dict[str, list[str]] = {
     "log": [],
     "config": [],
     "schema_loader": ["log"],
+    "scn": [],
     "excel_plan": ["config", "schema_loader"],
     "excel_control": ["config", "excel_plan"],
     "excel_writer": ["config", "excel_plan"],
@@ -176,70 +176,59 @@ def _prepare_schema(book: Any) -> tuple[Any, dict] | None:
     return schema, entry
 
 
+def _read_column_a(book: Any, sheet_name: str) -> list[Any]:
+    """Read all values from column A of a sheet."""
+    if sheet_name not in [s.name for s in book.sheets]:
+        return []
+    sheet = book.sheets[sheet_name]
+    cells: list[Any] = []
+    for row in range(1, 1000):
+        val = sheet.range((row, 1)).value
+        cells.append(val)
+        if len(cells) >= 10 and all(c is None for c in cells[-10:]):
+            break
+    while cells and cells[-1] is None:
+        cells.pop()
+    return cells
+
+
 def _read_data_from_sheets(book: Any, schema: Any) -> dict[str, Any]:
-    """Read user-entered data from the data entry sheets."""
+    """Read user-entered data from the data entry sheets via SCN parser."""
+    scn = _load_module("scn")
+    config = _load_module("config")
+    sheet_name = config.get("SHEET_DATA_ENTRY", "Data Entry")
+
+    cells = _read_column_a(book, sheet_name)
+    parsed = scn["parse_entry"](cells)
+
     data: dict[str, Any] = {}
     for group in schema.all_groups:
+        section_data = parsed.get(group.name, {})
         for field in group.fields:
             if field.is_table:
                 data[field.key] = _read_table_data(book, field)
             elif field.is_compound:
-                data[field.key] = _read_compound_data(book, field)
+                compound: dict[str, Any] = {}
+                parent_dict = section_data.get(field.key, {})
+                if isinstance(parent_dict, dict):
+                    for sf in field.sub_fields or []:
+                        compound[sf.key] = parent_dict.get(sf.key)
+                data[field.key] = compound
             else:
-                data[field.key] = _read_field_value(book, field)
+                data[field.key] = section_data.get(field.key)
     return data
 
 
-def _read_field_value(book: Any, field: Any) -> Any:
-    """Read a single field value using cached location or fallback scan.
-
-    Uses the _field_index built during sheet initialization for O(1)
-    lookup. Falls back to scanning if the index wasn't populated
-    (e.g., sheets built before index support was added).
-    """
-    loc = _field_index.get(field.key)
-    if loc:
-        sheet_name, row, col = loc
-        if sheet_name in [s.name for s in book.sheets]:
-            return book.sheets[sheet_name].range((row, col)).value
-
-    # Fallback: scan (handles sheets built before index was cached)
-    for sheet in book.sheets:
-        for row in range(2, 100):
-            cell_value = sheet.range((row, 1)).value
-            if cell_value and str(cell_value).strip() == field.label:
-                return sheet.range((row, 2)).value
-    return None
-
-
 def _read_table_data(book: Any, field: Any) -> list[dict]:
-    """Read table data from a dedicated table sheet."""
-    sheet_name = field.label[:31]
-    if sheet_name not in [s.name for s in book.sheets]:
+    """Read table data from a dedicated table sheet via SCN parser."""
+    scn = _load_module("scn")
+    planner = _load_module("excel_plan")
+    sheet_name = planner["_table_sheet_name"](field.label)
+    cells = _read_column_a(book, sheet_name)
+    if not cells:
         return []
-
-    sheet = book.sheets[sheet_name]
-    columns = field.columns or []
-    rows = []
-
-    for row_idx in range(2, 200):
-        first_cell = sheet.range((row_idx, 1)).value
-        if first_cell is None:
-            break
-        row_data = {}
-        for col_idx, col in enumerate(columns, start=1):
-            row_data[col["key"]] = sheet.range((row_idx, col_idx)).value
-        rows.append(row_data)
-
-    return rows
-
-
-def _read_compound_data(book: Any, field: Any) -> dict:
-    """Read compound field data from its group sheet."""
-    result = {}
-    for sf in field.sub_fields or []:
-        result[sf.key] = _read_field_value(book, sf)
-    return result
+    parsed = scn["parse_entry"](cells)
+    return parsed.get(field.key, [])
 
 
 # --- Control sheet builder ---
@@ -306,8 +295,8 @@ def _build_control_sheet(book: Any) -> None:
     c["C16"].value = "Redact on Export:"
     c["D16"].value = "TRUE"
 
-    # YAML staging area
-    c["C18"].value = "YAML STAGING AREA"
+    # Data staging area
+    c["C18"].value = "DATA STAGING AREA"
     _fmt(c["C18"], bold=True, color=_OPTIONAL_BG)
 
 
@@ -347,7 +336,6 @@ def init_workbook(book: Any) -> None:
                 plan = planner["plan_sheets"](schema)
                 writer = _load_module("excel_writer")
                 writer["build_sheets"](book, plan)
-                _field_index.update(plan.field_locations)
 
         # Remove default sheet left over from workbook creation
         for name in ("Sheet1", "Sheet 1"):
@@ -447,7 +435,6 @@ def initialize_sheets(book: Any) -> None:
                 plan = planner["plan_sheets"](schema)
                 writer = _load_module("excel_writer")
                 writer["build_sheets"](book, plan)
-                _field_index.update(plan.field_locations)
 
         _set_status(book, f"Ready — {len(schema_names)} document types loaded")
 

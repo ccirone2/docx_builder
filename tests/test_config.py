@@ -8,8 +8,8 @@ from engine.config import (
     HEADER_FONT_COLOR,
     IS_PYODIDE,
     OPTIONAL_BG_COLOR,
-    REQUIRED_INDICATOR_COLOR,
     SHEET_CONTROL,
+    SHEET_DATA_ENTRY,
 )
 
 
@@ -25,12 +25,13 @@ def test_color_constants_hex_format() -> None:
         ("HEADER_COLOR", HEADER_COLOR),
         ("HEADER_FONT_COLOR", HEADER_FONT_COLOR),
         ("OPTIONAL_BG_COLOR", OPTIONAL_BG_COLOR),
-        ("REQUIRED_INDICATOR_COLOR", REQUIRED_INDICATOR_COLOR),
     ]:
         assert hex_pattern.match(value), f"{name} = {value!r} is not valid hex"
 
 
 def test_sheet_name_constants_non_empty() -> None:
-    """SHEET_CONTROL must be a non-empty string."""
+    """SHEET_CONTROL and SHEET_DATA_ENTRY must be non-empty strings."""
     assert isinstance(SHEET_CONTROL, str)
     assert len(SHEET_CONTROL) > 0
+    assert isinstance(SHEET_DATA_ENTRY, str)
+    assert len(SHEET_DATA_ENTRY) > 0

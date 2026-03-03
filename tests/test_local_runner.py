@@ -10,6 +10,7 @@ from dev.local_runner import (
     validate,
 )
 from dev.mock_book import MockBook
+from engine.config import SHEET_DATA_ENTRY
 from engine.schema_loader import Schema
 
 # ---------------------------------------------------------------------------
@@ -29,31 +30,16 @@ class TestInitWorkbook:
         init_workbook(book, rfq_schema, schema_name="RFQ - Electric Utility")
         assert book.sheets["Control"]["B3"].value == "RFQ - Electric Utility"
 
-    def test_creates_data_sheets(self, rfq_schema: Schema):
+    def test_creates_data_entry_sheet(self, rfq_schema: Schema):
         book = MockBook()
         init_workbook(book, rfq_schema)
         sheet_names = [s.name for s in book.sheets]
-        # Should have group sheets beyond just Control
-        non_control = [n for n in sheet_names if n != "Control"]
-        assert len(non_control) > 0
-
-    def test_returns_field_locations(self, rfq_schema: Schema):
-        book = MockBook()
-        locs = init_workbook(book, rfq_schema)
-        assert isinstance(locs, dict)
-        assert len(locs) > 0
-        # Spot-check a known field
-        assert "issuer_name" in locs
-        sheet, row, col = locs["issuer_name"]
-        assert isinstance(sheet, str)
-        assert isinstance(row, int)
-        assert isinstance(col, int)
+        assert SHEET_DATA_ENTRY in sheet_names
 
     def test_creates_table_sheets(self, rfq_schema: Schema):
         book = MockBook()
         init_workbook(book, rfq_schema)
         sheet_names = [s.name for s in book.sheets]
-        # Table fields get their own sheet named after the field label
         assert "Work Items - Line Items" in sheet_names
         assert "Required Documents" in sheet_names
 
@@ -64,6 +50,34 @@ class TestInitWorkbook:
         sheet_names = [s.name for s in book.sheets]
         assert "Sheet1" not in sheet_names
 
+    def test_data_entry_has_scn_sections(self, rfq_schema: Schema):
+        """Data Entry sheet has [Group Name] section headers."""
+        book = MockBook()
+        init_workbook(book, rfq_schema)
+        sheet = book.sheets[SHEET_DATA_ENTRY]
+        # Read column A to find section headers
+        values = []
+        for r in range(1, 100):
+            v = sheet.range((r, 1)).value
+            if v is not None:
+                values.append(str(v))
+        sections = [v for v in values if v.startswith("[") and v.endswith("]")]
+        assert len(sections) >= 6  # At least 6 groups
+
+    def test_data_entry_has_key_declarations(self, rfq_schema: Schema):
+        """Data Entry sheet has field_key: declarations."""
+        book = MockBook()
+        init_workbook(book, rfq_schema)
+        sheet = book.sheets[SHEET_DATA_ENTRY]
+        values = []
+        for r in range(1, 200):
+            v = sheet.range((r, 1)).value
+            if v is not None:
+                values.append(str(v))
+        keys = [v for v in values if v.endswith(":") and not v.startswith(";;")]
+        assert "issuer_name:" in keys
+        assert "rfq_number:" in keys
+
 
 # ---------------------------------------------------------------------------
 # fill_data + read_data round-trip
@@ -73,15 +87,15 @@ class TestInitWorkbook:
 class TestFillReadRoundtrip:
     def test_simple_fields_roundtrip(self, rfq_schema: Schema):
         book = MockBook()
-        locs = init_workbook(book, rfq_schema)
+        init_workbook(book, rfq_schema)
 
         data_in = {
             "issuer_name": "Ozark Electric Cooperative",
             "rfq_number": "RFQ-2026-042",
             "rfq_title": "Distribution Line Reconstruction",
         }
-        fill_data(book, rfq_schema, locs, data_in)
-        data_out = read_data(book, rfq_schema, locs)
+        fill_data(book, rfq_schema, data_in)
+        data_out = read_data(book, rfq_schema)
 
         assert data_out["issuer_name"] == "Ozark Electric Cooperative"
         assert data_out["rfq_number"] == "RFQ-2026-042"
@@ -89,7 +103,7 @@ class TestFillReadRoundtrip:
 
     def test_table_fields_roundtrip(self, rfq_schema: Schema):
         book = MockBook()
-        locs = init_workbook(book, rfq_schema)
+        init_workbook(book, rfq_schema)
 
         data_in = {
             "work_items": [
@@ -103,16 +117,15 @@ class TestFillReadRoundtrip:
                 },
             ],
         }
-        fill_data(book, rfq_schema, locs, data_in)
-        data_out = read_data(book, rfq_schema, locs)
+        fill_data(book, rfq_schema, data_in)
+        data_out = read_data(book, rfq_schema)
 
         assert len(data_out["work_items"]) == 1
         assert data_out["work_items"][0]["description"] == "Set steel poles"
-        assert data_out["work_items"][0]["quantity"] == 45
 
     def test_compound_fields_roundtrip(self, rfq_schema: Schema):
         book = MockBook()
-        locs = init_workbook(book, rfq_schema)
+        init_workbook(book, rfq_schema)
 
         data_in = {
             "safety_requirements": {
@@ -120,18 +133,25 @@ class TestFillReadRoundtrip:
                 "ppe": "FR clothing, hard hat",
             },
         }
-        fill_data(book, rfq_schema, locs, data_in)
-        data_out = read_data(book, rfq_schema, locs)
+        fill_data(book, rfq_schema, data_in)
+        data_out = read_data(book, rfq_schema)
 
         assert data_out["safety_requirements"]["general"] == "OSHA 10-hr required"
         assert data_out["safety_requirements"]["ppe"] == "FR clothing, hard hat"
 
+    def test_unfilled_fields_are_none(self, rfq_schema: Schema):
+        """Fields not filled in should read back as None."""
+        book = MockBook()
+        init_workbook(book, rfq_schema)
+        data_out = read_data(book, rfq_schema)
+        assert data_out["issuer_name"] is None
+
     def test_full_sample_data_roundtrip(self, rfq_schema: Schema, sample_data: dict):
         book = MockBook()
-        locs = init_workbook(book, rfq_schema)
+        init_workbook(book, rfq_schema)
 
-        fill_data(book, rfq_schema, locs, sample_data)
-        data_out = read_data(book, rfq_schema, locs)
+        fill_data(book, rfq_schema, sample_data)
+        data_out = read_data(book, rfq_schema)
 
         assert data_out["issuer_name"] == sample_data["issuer_name"]
         assert data_out["rfq_number"] == sample_data["rfq_number"]

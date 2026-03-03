@@ -109,6 +109,23 @@ auto-fit behavior. No risk of Office.js row-height exceptions. Any future
 intentional row-height control must be re-added deliberately and tested
 against xlwings Lite.
 
+## ADR-013: Single-Column Notation (SCN) for Data Entry
+**Date:** 2026-03-03
+**Context:** The multi-column Excel layout (label in col 1, value in col 2,
+required indicator in col 6) was fragile — reading required coordinate-based
+`field_locations` tracking, and any layout change broke readers. The format
+was also not human-readable outside Excel.
+**Decision:** Replace multi-column layout with SCN (Single-Column Notation)
+in column A. All non-table fields on one "Data Entry" sheet using SCN
+constructs: `[Section]`, `;; Label`, `key:`, value. Tables use `+name`
+dict-list notation on separate sheets. Reading uses `scn.parse_entry()`,
+writing scans for `key:` rows. No coordinate tracking needed.
+**Consequences:** Simpler read/write code (no `field_locations` dict).
+Workbook data is human-readable as plain text. SCN parser is reusable for
+issue #15 (data exchange format). Trade-off: single-column layout is less
+visually polished than label/value columns, but SCN comments (`;;`) provide
+field labels for guidance.
+
 ## ADR-010: Local Development Harness with MockBook
 **Date:** 2026-03-02
 **Context:** Need Claude Code to run the engine pipeline locally and verify

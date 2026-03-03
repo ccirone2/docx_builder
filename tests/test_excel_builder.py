@@ -1,120 +1,189 @@
 """Tests for engine/excel_plan.py and engine/excel_control.py — pure logic layer."""
 from __future__ import annotations
 
+from engine.config import SHEET_DATA_ENTRY
 from engine.excel_control import plan_control_sheet
 from engine.excel_plan import (
     CellInstruction,
-    plan_group_layout,
+    plan_data_entry,
     plan_sheets,
     plan_table_layout,
 )
 from engine.schema_loader import Schema
 
 
-def test_plan_sheets_creates_correct_sheet_names(rfq_schema: Schema) -> None:
-    """Sheet plan produces expected sheet names for RFQ schema."""
+# ---------------------------------------------------------------------------
+# plan_sheets — overall structure
+# ---------------------------------------------------------------------------
+
+
+def test_plan_sheets_has_data_entry_sheet(rfq_schema: Schema) -> None:
+    """plan_sheets always creates a 'Data Entry' sheet."""
     plan = plan_sheets(rfq_schema)
-    assert len(plan.sheets) > 0
-    # Specific expected sheets (no prefix)
-    assert "Issuing Organization" in plan.sheets
-    assert "RFQ Details" in plan.sheets
+    assert SHEET_DATA_ENTRY in plan.sheets
+
+
+def test_plan_sheets_has_table_sheets(rfq_schema: Schema) -> None:
+    """Table fields get their own sheets."""
+    plan = plan_sheets(rfq_schema)
     assert "Work Items - Line Items" in plan.sheets
     assert "Required Documents" in plan.sheets
 
 
-def test_plan_group_layout_required_fields(rfq_schema: Schema) -> None:
-    """Required fields produce red indicator instructions."""
-    group = rfq_schema.core_groups[0]  # Issuing Organization
-    non_table = [f for f in group.fields if not f.is_table]
-    instrs = plan_group_layout(group.name, non_table, "Test Sheet")
-
-    # Find required indicators (col 6, value "*")
-    indicators = [i for i in instrs if i.col == 6 and i.value == "*"]
-    assert len(indicators) > 0
-    for ind in indicators:
-        assert ind.font_color != ""  # Has color
+def test_plan_sheets_all_instructions_col_one(rfq_schema: Schema) -> None:
+    """All instructions are in column 1 (single-column layout)."""
+    plan = plan_sheets(rfq_schema)
+    assert all(i.col == 1 for i in plan.instructions)
 
 
-def test_plan_group_layout_choice_dropdown(rfq_schema: Schema) -> None:
-    """Choice field (work_category) gets dropdown_choices in its instruction."""
-    # Project Information group has work_category
-    project_group = rfq_schema.core_groups[2]
-    non_table = [f for f in project_group.fields if not f.is_table]
-    instrs = plan_group_layout(project_group.name, non_table, "Test Sheet")
+def test_plan_sheets_no_field_locations(rfq_schema: Schema) -> None:
+    """SheetPlan no longer has field_locations attribute."""
+    plan = plan_sheets(rfq_schema)
+    assert not hasattr(plan, "field_locations")
 
-    # Find instruction with dropdown_choices
-    dropdowns = [i for i in instrs if i.dropdown_choices is not None]
-    assert len(dropdowns) > 0
-    # work_category should have the choices
-    category_dropdown = [
-        i for i in dropdowns if "Distribution Line Construction" in (i.dropdown_choices or [])
+
+# ---------------------------------------------------------------------------
+# plan_data_entry — SCN layout for non-table fields
+# ---------------------------------------------------------------------------
+
+
+def test_data_entry_has_section_headers(rfq_schema: Schema) -> None:
+    """Each group produces a [Group Name] section header."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    sections = [i for i in instrs if i.is_header and str(i.value).startswith("[")]
+    # RFQ schema has 9 groups (6 core + 3 optional)
+    assert len(sections) >= 6
+
+
+def test_data_entry_section_headers_styled(rfq_schema: Schema) -> None:
+    """Section headers have bold + header color."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    sections = [i for i in instrs if i.is_header and str(i.value).startswith("[")]
+    for s in sections:
+        assert s.bold
+        assert s.bg_color != ""
+        assert s.font_color != ""
+
+
+def test_data_entry_has_key_declarations(rfq_schema: Schema) -> None:
+    """Fields produce key: declaration rows that are bold."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    keys = [i for i in instrs if str(i.value).endswith(":") and not str(i.value).startswith(";;")]
+    assert len(keys) > 0
+    assert all(k.bold for k in keys)
+
+
+def test_data_entry_has_comment_labels(rfq_schema: Schema) -> None:
+    """Fields produce ;; label comment rows."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    comments = [i for i in instrs if str(i.value).startswith(";;")]
+    assert len(comments) > 0
+
+
+def test_data_entry_required_fields_marked(rfq_schema: Schema) -> None:
+    """Required field labels have * suffix."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    required_comments = [i for i in instrs if str(i.value).endswith(" *")]
+    assert len(required_comments) > 0
+
+
+def test_data_entry_has_value_cells_with_field_key(rfq_schema: Schema) -> None:
+    """Value cells carry field_key for identification."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    keyed = [i for i in instrs if i.field_key]
+    assert len(keyed) > 0
+    # Value cells are not headers and not bold
+    assert all(not i.is_header for i in keyed)
+
+
+def test_data_entry_issuer_name_present(rfq_schema: Schema) -> None:
+    """issuer_name field produces key declaration and value cell."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    key_rows = [i for i in instrs if i.value == "issuer_name:"]
+    assert len(key_rows) == 1
+    value_cells = [i for i in instrs if i.field_key == "issuer_name"]
+    assert len(value_cells) == 1
+
+
+def test_data_entry_compound_field_dot_notation(rfq_schema: Schema) -> None:
+    """Compound fields use dot notation: parent_key.sub_key:"""
+    instrs, _ = plan_data_entry(rfq_schema)
+    dot_keys = [i for i in instrs if "." in str(i.value) and str(i.value).endswith(":")]
+    assert len(dot_keys) > 0
+    # safety_requirements.general should be present
+    safety_keys = [i for i in dot_keys if "safety_requirements" in str(i.value)]
+    assert len(safety_keys) >= 1
+
+
+def test_data_entry_compound_has_label_header(rfq_schema: Schema) -> None:
+    """Compound fields have a ;; label header row."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    compound_labels = [
+        i for i in instrs
+        if i.is_header and str(i.value).startswith(";;") and "Safety" in str(i.value)
     ]
-    assert len(category_dropdown) == 1
+    assert len(compound_labels) >= 1
 
 
-def test_plan_group_layout_compound(rfq_schema: Schema) -> None:
-    """Compound field (safety_requirements) creates sub-header + indented sub-fields."""
-    # Additional Provisions group has safety_requirements compound
-    provisions_group = rfq_schema.optional_groups[2]
-    non_table = [f for f in provisions_group.fields if not f.is_table]
-    instrs = plan_group_layout(provisions_group.name, non_table, "Test Sheet")
-
-    # Should have a sub-header for "Additional Safety Requirements"
-    sub_headers = [i for i in instrs if i.is_header and "Safety" in str(i.value)]
-    assert len(sub_headers) >= 1
-
-    # Should have indented sub-field rows (col 2 for label)
-    indented = [i for i in instrs if i.col == 2 and not i.is_header and "  " in str(i.value)]
-    assert len(indented) >= 3  # general, hot_work, lockout_tagout, etc.
+def test_data_entry_all_on_data_entry_sheet(rfq_schema: Schema) -> None:
+    """All data entry instructions target the Data Entry sheet."""
+    instrs, _ = plan_data_entry(rfq_schema)
+    assert all(i.sheet == SHEET_DATA_ENTRY for i in instrs)
 
 
-def test_plan_group_layout_conditional(rfq_schema: Schema) -> None:
-    """Conditional field (bonding_amount) has a note about the condition."""
-    # Terms & Conditions group
-    terms_group = rfq_schema.core_groups[5]
-    non_table = [f for f in terms_group.fields if not f.is_table]
-    instrs = plan_group_layout(terms_group.name, non_table, "Test Sheet")
-
-    # bonding_amount should have a note instruction
-    notes = [i for i in instrs if i.note and "bonding_required" in i.note]
-    assert len(notes) == 1
+# ---------------------------------------------------------------------------
+# plan_table_layout — SCN dict-list layout
+# ---------------------------------------------------------------------------
 
 
-def test_plan_table_layout_work_items(rfq_schema: Schema) -> None:
-    """work_items table has correct headers and 0 default rows."""
+def test_table_layout_has_header_comment(rfq_schema: Schema) -> None:
+    """Table sheets start with a ;; comment describing columns."""
     work_items = rfq_schema.get_field("work_items")
     assert work_items is not None
-    tp = plan_table_layout(work_items, "Work Items")
-
-    # Should have 6 header columns
-    assert len(tp.headers) == 6
-    header_labels = [h.value for h in tp.headers]
-    assert "Item #" in header_labels
-    assert "Description" in header_labels
-    assert "Unit Price ($)" in header_labels
-
-    # work_items has no default_rows
-    assert len(tp.default_rows) == 0
+    instrs = plan_table_layout(work_items, "Work Items")
+    header = instrs[0]
+    assert header.is_header
+    assert str(header.value).startswith(";;")
+    assert "Item #" in str(header.value)
 
 
-def test_plan_table_layout_required_docs(rfq_schema: Schema) -> None:
-    """required_documents table has 6 default rows."""
+def test_table_layout_dict_list_entries(rfq_schema: Schema) -> None:
+    """Table rows use +field_key notation."""
+    work_items = rfq_schema.get_field("work_items")
+    assert work_items is not None
+    instrs = plan_table_layout(work_items, "Work Items")
+    plus_entries = [i for i in instrs if str(i.value).startswith("+")]
+    # work_items has no default_rows, so 1 empty template row
+    assert len(plus_entries) == 1
+    assert plus_entries[0].value == "+work_items"
+
+
+def test_table_layout_column_keys(rfq_schema: Schema) -> None:
+    """Each table row has key: declarations for all columns."""
+    work_items = rfq_schema.get_field("work_items")
+    assert work_items is not None
+    instrs = plan_table_layout(work_items, "Work Items")
+    key_rows = [i for i in instrs if str(i.value).endswith(":") and not str(i.value).startswith(";;")]
+    # 6 columns in work_items template row
+    assert len(key_rows) == 6
+
+
+def test_table_layout_default_rows(rfq_schema: Schema) -> None:
+    """required_documents table has default rows with values."""
     req_docs = rfq_schema.get_field("required_documents")
     assert req_docs is not None
-    tp = plan_table_layout(req_docs, "Required Docs")
-
+    instrs = plan_table_layout(req_docs, "Required Docs")
+    plus_entries = [i for i in instrs if str(i.value).startswith("+")]
     # 6 default rows in the schema
-    assert len(tp.default_rows) == 6
+    assert len(plus_entries) == 6
 
 
-def test_plan_table_layout_header_count(rfq_schema: Schema) -> None:
-    """work_items table plan has one header per column."""
+def test_table_layout_all_col_one(rfq_schema: Schema) -> None:
+    """All table instructions are in column 1."""
     work_items = rfq_schema.get_field("work_items")
     assert work_items is not None
-    tp = plan_table_layout(work_items, "Work Items")
-
-    assert len(tp.headers) == len(work_items.columns)
-    assert all(h.is_header for h in tp.headers)
+    instrs = plan_table_layout(work_items, "Work Items")
+    assert all(i.col == 1 for i in instrs)
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +211,6 @@ def test_plan_control_sheet_has_title_banner() -> None:
     assert len(title) == 1
     assert title[0].row == 1
     assert title[0].is_header
-    assert title[0].merge_cols >= 4
 
 
 def test_plan_control_sheet_has_button_labels() -> None:
@@ -184,10 +252,6 @@ def test_plan_control_sheet_has_config_section() -> None:
     redact_label = [i for i in instrs if i.value == "Redact on Export:"]
     assert len(redact_label) == 1
 
-    redact_value = [i for i in instrs if i.value == "TRUE" and i.dropdown_choices]
-    assert len(redact_value) == 1
-    assert redact_value[0].dropdown_choices == ["TRUE", "FALSE"]
-
 
 def test_plan_control_sheet_custom_github_url() -> None:
     """Custom github_base URL appears in the config area."""
@@ -197,40 +261,11 @@ def test_plan_control_sheet_custom_github_url() -> None:
     assert len(url_cells) == 1
 
 
-def test_plan_control_sheet_has_yaml_staging() -> None:
-    """YAML STAGING AREA section header exists."""
+def test_plan_control_sheet_has_data_staging() -> None:
+    """DATA STAGING AREA section header exists."""
     instrs = plan_control_sheet()
-    staging = [i for i in instrs if i.value == "YAML STAGING AREA"]
+    staging = [i for i in instrs if i.value == "DATA STAGING AREA"]
     assert len(staging) == 1
-
-
-# ---------------------------------------------------------------------------
-# field_locations index tests
-# ---------------------------------------------------------------------------
-
-
-def test_field_locations_populated(rfq_schema: Schema) -> None:
-    """plan_sheets populates field_locations with non-table field keys."""
-    plan = plan_sheets(rfq_schema)
-    assert len(plan.field_locations) > 0
-    # issuer_name is a required field, should be in the index
-    assert "issuer_name" in plan.field_locations
-    sheet, row, col = plan.field_locations["issuer_name"]
-    assert sheet == "Issuing Organization"
-    assert row >= 2
-    assert col >= 2
-
-
-def test_field_locations_match_instructions(rfq_schema: Schema) -> None:
-    """Every field_locations entry corresponds to an instruction with field_key."""
-    plan = plan_sheets(rfq_schema)
-    keyed_instrs = {i.field_key: i for i in plan.instructions if i.field_key}
-    for key, (sheet, row, col) in plan.field_locations.items():
-        assert key in keyed_instrs
-        instr = keyed_instrs[key]
-        assert instr.sheet == sheet
-        assert instr.row == row
-        assert instr.col == col
 
 
 def test_field_key_on_value_cells(rfq_schema: Schema) -> None:

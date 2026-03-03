@@ -110,17 +110,17 @@ def cmd_init(args: argparse.Namespace) -> None:
     if args.backend == "excel":
         app, book = _open_excel_book()
         try:
-            locs = init_workbook(book, schema, schema_name=schema.name)
+            init_workbook(book, schema, schema_name=schema.name)
             book.save(str(output_path))
             print(f"Initialized Excel workbook: {output_path}")  # noqa: T201
-            print(f"  Sheets: {len(book.sheets)}, Fields: {len(locs)}")  # noqa: T201
+            print(f"  Sheets: {len(book.sheets)}")  # noqa: T201
         finally:
             app.quit()
     else:
         book = MockBook()
-        locs = init_workbook(book, schema, schema_name=schema.name)
+        init_workbook(book, schema, schema_name=schema.name)
         _save_mock_book(book, output_path)
-        print(f"  Sheets: {len(book.sheets)}, Fields: {len(locs)}")  # noqa: T201
+        print(f"  Sheets: {len(book.sheets)}")  # noqa: T201
 
 
 def cmd_inspect(args: argparse.Namespace) -> None:
@@ -147,7 +147,7 @@ def cmd_verify(args: argparse.Namespace) -> None:
 
     # Re-init a reference book to compare
     ref = MockBook()
-    ref_locs = init_workbook(ref, schema, schema_name=schema.name)
+    init_workbook(ref, schema, schema_name=schema.name)
     ref_sheets = {s.name for s in ref.sheets}
     actual_sheets = {s.name for s in book.sheets}
 
@@ -162,16 +162,8 @@ def cmd_verify(args: argparse.Namespace) -> None:
     if extra:
         print(f"WARN: Extra sheets: {extra}")  # noqa: T201
 
-    # Check field locations exist
-    for key, (sheet, row, col) in ref_locs.items():
-        if sheet not in actual_sheets:
-            print(f"FAIL: Field '{key}' sheet '{sheet}' missing")  # noqa: T201
-            ok = False
-
     if ok:
-        print(  # noqa: T201
-            f"PASS: {len(actual_sheets)} sheets, {len(ref_locs)} field locations verified"
-        )
+        print(f"PASS: {len(actual_sheets)} sheets verified")  # noqa: T201
     else:
         sys.exit(1)
 
@@ -182,14 +174,10 @@ def cmd_fill(args: argparse.Namespace) -> None:
     input_path, output_path = _resolve_paths(args)
     book = _load_mock_book(input_path)
 
-    # Re-compute field locations from a reference init
-    ref = MockBook()
-    locs = init_workbook(ref, schema)
-
     from dev.sample_data import get_sample_data
 
     data = get_sample_data()
-    fill_data(book, schema, locs, data)
+    fill_data(book, schema, data)
     _save_mock_book(book, output_path)
     print(f"  Filled {len(data)} fields")  # noqa: T201
 
@@ -200,11 +188,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
     input_path, _ = _resolve_paths(args)
     book = _load_mock_book(input_path)
 
-    # Re-compute field locations
-    ref = MockBook()
-    locs = init_workbook(ref, schema)
-
-    data = read_data(book, schema, locs)
+    data = read_data(book, schema)
     result = validate(schema, data)
 
     if result.valid:
@@ -231,11 +215,7 @@ def cmd_generate(args: argparse.Namespace) -> None:
     input_path, _ = _resolve_paths(args)
     book = _load_mock_book(input_path)
 
-    # Re-compute field locations
-    ref = MockBook()
-    locs = init_workbook(ref, schema)
-
-    data = read_data(book, schema, locs)
+    data = read_data(book, schema)
     out_path = Path(getattr(args, "output", None) or "output/generated.docx")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
