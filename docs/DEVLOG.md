@@ -434,3 +434,38 @@ pane now prints each error and warning on its own line in a compact format:
 **Files created:** tests/test_runner.py
 **Files modified:** workbook/runner.py, docs/DEVLOG.md
 **Test count:** 160 tests across 13 files (up from 149)
+
+## 2026-03-03 — SCN format adoption: issues #14 and #15
+
+Reviewed the Single-Column Notation (SCN) spec and reference parser in
+`docs/change/` (scn_rules.md, scn_examples.md, scn.py). SCN is a structured
+data format designed for single-column spreadsheet entry — one value per cell,
+with `[sections]`, `key:`/value, `- list items`, `+dict_list` entries, and
+`;;` comments. All values are strings; type casting is deferred to a separate
+layer.
+
+### Issue #14 — Amended
+Rewrote issue #14 ("Revamp data entry sheets") to adopt SCN as the data entry
+format. Key changes from the original issue:
+- **Single-column layout** replaces the multi-column (label/value/indicator)
+  approach — all non-table fields on one "Data Entry" sheet using column A
+- **SCN constructs** used directly: `[Group Name]` for section headers,
+  `;; Label *` for field labels, `key:` + value for data entry
+- **SCN parser reads data** instead of cell-coordinate-based `_read_field_value()`
+- **Table fields** use `+table_name` notation on separate sheets
+- Requires new `engine/scn.py` module (moved from `docs/change/scn.py`)
+
+### Issue #15 — Created
+Created new issue #15 ("Replace YAML data exchange with SCN text format") to
+migrate all YAML import/export and LLM prompt generation to SCN:
+- `engine/data_exchange.py` — YAML serialize/deserialize → SCN
+- `engine/llm_helpers.py` — LLM prompts in SCN format instead of YAML
+- `workbook/runner.py` — rename `*_yaml` functions, update staging area
+- `engine/excel_control.py` — button labels and staging area label
+- Schema YAML files (`schemas/*.yaml`) are NOT affected
+- 5-phase implementation plan: SCN module → data exchange → LLM prompts →
+  workbook integration → tests + docs
+- Depends on #14 (which establishes `engine/scn.py`)
+
+**Issues modified:** #14 (amended), #15 (created)
+**No code changes** — planning only
