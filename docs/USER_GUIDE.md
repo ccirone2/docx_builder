@@ -40,9 +40,10 @@ It runs entirely in your browser using xlwings Lite -- no Python installation ne
 
 ### Data Exchange
 
-- **Export** your data as YAML for backup or sharing
-- **Import** previously exported YAML data
+- **Export** your data as SCN text for backup or sharing
+- **Import** previously exported SCN data
 - **LLM Prompt** generates a safe prompt for AI assistance with redacted PII
+- See [docs/SCN.md](SCN.md) for the SCN format specification
 
 ### Custom Schemas
 

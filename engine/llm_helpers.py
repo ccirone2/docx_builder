@@ -2,7 +2,7 @@
 llm_helpers.py — LLM prompt generation helpers for schema-driven data fill-in.
 
 Two main outputs:
-  1. FILL-IN PROMPT: A YAML-based prompt that an LLM can fill in with real data
+  1. FILL-IN PROMPT: An SCN-based prompt that an LLM can fill in with real data
   2. SCHEMA REFERENCE: A compact schema overview for LLM context
 
 Split from data_exchange.py to keep modules under 400 lines each.
@@ -32,7 +32,7 @@ def generate_llm_prompt(
     redact: bool = True,
 ) -> str:
     """
-    Generate a YAML-based prompt that an LLM can fill in.
+    Generate an SCN-based prompt that an LLM can fill in.
 
     This produces a structured document containing:
       1. Instructions for the LLM
@@ -54,82 +54,91 @@ def generate_llm_prompt(
     """
     existing_data = existing_data or {}
 
-    lines = []
+    lines: list[str] = []
 
     # --- Instructions header ---
-    lines.append("# =================================================================")
-    lines.append(f"# LLM FILL-IN REQUEST: {schema.name}")
-    lines.append("# =================================================================")
-    lines.append("#")
-    lines.append("# Please fill in the YAML fields below based on the project context")
-    lines.append("# and field descriptions. Follow these rules:")
-    lines.append("#")
-    lines.append("#   1. Replace placeholder values (marked with <...>) with real content")
-    lines.append("#   2. Keep the YAML structure exactly as-is — don't rename keys")
-    lines.append("#   3. For multiline text, use YAML literal block style (|)")
-    lines.append("#   4. For tables, add/remove rows as needed but keep column keys")
-    lines.append("#   5. Fields marked REQUIRED must be filled in")
-    lines.append("#   6. Fields marked OPTIONAL can be left empty or removed")
-    lines.append("#   7. For boolean fields, use true or false")
-    lines.append("#   8. For choice fields, pick from the listed options only")
-    lines.append("#   9. For date fields, use YYYY-MM-DD format")
-    lines.append("#  10. Return ONLY the YAML block between the START/END markers")
-    lines.append("#  11. Fields showing [REDACTED] contain sensitive data that was")
-    lines.append("#      withheld — do NOT guess or fabricate values for these fields,")
-    lines.append("#      just leave them as [REDACTED]")
-    lines.append("#")
+    lines.append(";; =================================================================")
+    lines.append(f";; LLM FILL-IN REQUEST: {schema.name}")
+    lines.append(";; =================================================================")
+    lines.append(";;")
+    lines.append(";; Please fill in the SCN fields below based on the project context")
+    lines.append(";; and field descriptions. Follow these rules:")
+    lines.append(";;")
+    lines.append(";;   1. Replace placeholder values (marked with <...>) with real content")
+    lines.append(";;   2. Keep the SCN structure exactly as-is — don't rename keys")
+    lines.append(";;   3. Each key: is followed by its value on the next line")
+    lines.append(";;   4. For tables, add/remove +entries as needed but keep column keys")
+    lines.append(";;   5. Fields marked REQUIRED must be filled in")
+    lines.append(";;   6. Fields marked OPTIONAL can be left empty or removed")
+    lines.append(";;   7. For boolean fields, use true or false")
+    lines.append(";;   8. For choice fields, pick from the listed options only")
+    lines.append(";;   9. For date fields, use YYYY-MM-DD format")
+    lines.append(";;  10. Return ONLY the SCN block between the START/END markers")
+    lines.append(";;  11. Fields showing [REDACTED] contain sensitive data that was")
+    lines.append(";;      withheld — do NOT guess or fabricate values for these fields,")
+    lines.append(";;      just leave them as [REDACTED]")
+    lines.append(";;")
 
     if project_context:
-        lines.append("# PROJECT CONTEXT:")
+        lines.append(";; PROJECT CONTEXT:")
         for ctx_line in project_context.strip().splitlines():
-            lines.append(f"#   {ctx_line}")
-        lines.append("#")
+            lines.append(f";;   {ctx_line}")
+        lines.append(";;")
 
     lines.append("")
 
-    # --- YAML data block ---
-    lines.append("# --- START YAML ---")
+    # --- SCN data block ---
+    lines.append(";; --- START SCN ---")
     lines.append("")
 
     # Meta
-    lines.append("_meta:")
-    lines.append(f"  schema_id: {schema.id}")
-    lines.append(f"  schema_version: {schema.version}")
-    lines.append("  export_type: full_snapshot")
-    lines.append(f"  redacted: {str(redact).lower()}")
+    lines.append("[_meta]")
+    lines.append("schema_id:")
+    lines.append(schema.id)
+    lines.append("schema_version:")
+    lines.append(schema.version)
+    lines.append("export_type:")
+    lines.append("full_snapshot")
+    lines.append("redacted:")
+    lines.append(str(redact).lower())
     lines.append("")
 
     # Core groups
     for group in schema.core_groups:
-        lines.append(f"# --- {group.name} ---")
-        lines.append(f"{_group_key(group)}:")
+        lines.append(f";; --- {group.name} ---")
+        lines.append(f"[{_group_key(group)}]")
         for field in group.fields:
             lines.extend(_render_field_for_llm(field, existing_data.get(field.key), redact))
         lines.append("")
 
     # Optional groups
     for group in schema.optional_groups:
-        lines.append(f"# --- {group.name} (OPTIONAL) ---")
-        lines.append(f"{_group_key(group)}:")
+        lines.append(f";; --- {group.name} (OPTIONAL) ---")
+        lines.append(f"[{_group_key(group)}]")
         for field in group.fields:
             lines.extend(_render_field_for_llm(field, existing_data.get(field.key), redact))
         lines.append("")
 
     # Flexible fields
-    lines.append("# --- Additional Information (OPTIONAL) ---")
-    lines.append("# Add any project-specific fields not covered above.")
-    lines.append("additional_information:")
+    lines.append(";; --- Additional Information (OPTIONAL) ---")
+    lines.append(";; Add any project-specific fields not covered above.")
     flex = existing_data.get("_flexible_fields")
     if flex and isinstance(flex, list):
         for entry in flex:
-            lines.append(f"  - field_label: {entry.get('field_label', '')}")
-            lines.append(f"    field_value: {entry.get('field_value', '')}")
+            lines.append("+additional_information")
+            lines.append("field_label:")
+            lines.append(entry.get("field_label", ""))
+            lines.append("field_value:")
+            lines.append(entry.get("field_value", ""))
     else:
-        lines.append("  - field_label: <field name>")
-        lines.append("    field_value: <value>")
+        lines.append("+additional_information")
+        lines.append("field_label:")
+        lines.append("<field name>")
+        lines.append("field_value:")
+        lines.append("<value>")
 
     lines.append("")
-    lines.append("# --- END YAML ---")
+    lines.append(";; --- END SCN ---")
 
     return "\n".join(lines)
 
@@ -137,11 +146,11 @@ def generate_llm_prompt(
 def _render_field_for_llm(
     field: FieldDef, existing_value: Any = None, redact: bool = False
 ) -> list[str]:
-    """Render a single field as commented YAML lines for LLM consumption."""
-    lines = []
+    """Render a single field as SCN lines with comment annotations for LLM consumption."""
+    lines: list[str] = []
 
     # Build the description comment
-    parts = []
+    parts: list[str] = []
     if field.required:
         parts.append("REQUIRED")
     else:
@@ -156,12 +165,13 @@ def _render_field_for_llm(
     if field.placeholder and not (field.redact and redact):
         parts.append(field.placeholder)
 
-    comment = f"  # {field.label} [{', '.join(parts)}]"
+    comment = f";; {field.label} [{', '.join(parts)}]"
     lines.append(comment)
 
     # If redacted and has existing value, show [REDACTED]
     if redact and field.redact and existing_value is not None:
-        lines.append(f"  {field.key}: {REDACTED_TEXT}")
+        lines.append(f"{field.key}:")
+        lines.append(REDACTED_TEXT)
         return lines
 
     # Render the value based on type
@@ -170,26 +180,29 @@ def _render_field_for_llm(
     elif field.is_table:
         lines.extend(_render_table_for_llm(field, existing_value, redact))
     elif existing_value is not None:
-        lines.append(f"  {field.key}: {_format_existing_value(field, existing_value)}")
+        lines.append(f"{field.key}:")
+        lines.append(_format_existing_value(field, existing_value))
     elif field.default is not None:
-        lines.append(f"  {field.key}: {_format_existing_value(field, field.default)}")
+        lines.append(f"{field.key}:")
+        lines.append(_format_existing_value(field, field.default))
     else:
         # Redacted fields with no existing value — show placeholder but mark as redacted
         if redact and field.redact:
-            lines.append(f"  {field.key}: {REDACTED_TEXT}")
+            lines.append(f"{field.key}:")
+            lines.append(REDACTED_TEXT)
         else:
-            lines.append(f"  {field.key}: <{field.label.lower()}>")
+            lines.append(f"{field.key}:")
+            lines.append(f"<{field.label.lower()}>")
 
     return lines
 
 
 def _render_table_for_llm(field: FieldDef, existing_value: Any, redact: bool = False) -> list[str]:
-    """Render a table-type field for LLM fill-in, with optional column redaction."""
-    lines = []
-    lines.append(f"  {field.key}:")
+    """Render a table-type field for LLM fill-in using SCN +entry notation."""
+    lines: list[str] = []
 
     # Build set of redacted column keys
-    redacted_cols = set()
+    redacted_cols: set[str] = set()
     if redact and field.columns:
         redacted_cols = {col["key"] for col in field.columns if col.get("redact", False)}
 
@@ -198,24 +211,22 @@ def _render_table_for_llm(field: FieldDef, existing_value: Any, redact: bool = F
 
     if rows:
         for row in rows:
-            first = True
+            lines.append(f"+{field.key}")
             for col in field.columns:
-                prefix = "    - " if first else "      "
                 val = row.get(col["key"], f"<{col['label'].lower()}>")
                 if col["key"] in redacted_cols and val is not None:
-                    val = REDACTED_TEXT if col.get("type") not in ("number", "currency") else 0
-                lines.append(f"{prefix}{col['key']}: {val}")
-                first = False
+                    val = REDACTED_TEXT if col.get("type") not in ("number", "currency") else "0"
+                lines.append(f"{col['key']}:")
+                lines.append(str(val) if val is not None else "")
     else:
         # Generate one placeholder row from column definitions
-        first = True
+        lines.append(f"+{field.key}")
         for col in field.columns:
-            prefix = "    - " if first else "      "
+            lines.append(f"{col['key']}:")
             if col["key"] in redacted_cols:
-                lines.append(f"{prefix}{col['key']}: {REDACTED_TEXT}")
+                lines.append(REDACTED_TEXT)
             else:
-                lines.append(f"{prefix}{col['key']}: <{col['label'].lower()}>")
-            first = False
+                lines.append(f"<{col['label'].lower()}>")
 
     return lines
 
@@ -223,14 +234,13 @@ def _render_table_for_llm(field: FieldDef, existing_value: Any, redact: bool = F
 def _render_compound_for_llm(
     field: FieldDef, existing_value: Any, redact: bool = False
 ) -> list[str]:
-    """Render a compound field with its sub-fields for LLM fill-in."""
-    lines = []
-    lines.append(f"  {field.key}:")
+    """Render a compound field with its sub-fields using dot-notation keys."""
+    lines: list[str] = []
     existing = existing_value if isinstance(existing_value, dict) else {}
 
     for sf in field.sub_fields or []:
         # Sub-field comment
-        sf_parts = []
+        sf_parts: list[str] = []
         if sf.required:
             sf_parts.append("REQUIRED")
         else:
@@ -241,35 +251,36 @@ def _render_compound_for_llm(
         if sf.placeholder and not (sf.redact and redact):
             sf_parts.append(sf.placeholder)
 
-        lines.append(f"    # {sf.label} [{', '.join(sf_parts)}]")
+        lines.append(f";; {sf.label} [{', '.join(sf_parts)}]")
 
         sv = existing.get(sf.key)
 
         if redact and sf.redact and sv is not None:
-            lines.append(f"    {sf.key}: {REDACTED_TEXT}")
+            lines.append(f"{field.key}.{sf.key}:")
+            lines.append(REDACTED_TEXT)
         elif sv is not None:
-            lines.append(f"    {sf.key}: {_format_existing_value(sf, sv)}")
+            lines.append(f"{field.key}.{sf.key}:")
+            lines.append(_format_existing_value(sf, sv))
         elif sf.default is not None:
-            lines.append(f"    {sf.key}: {_format_existing_value(sf, sf.default)}")
+            lines.append(f"{field.key}.{sf.key}:")
+            lines.append(_format_existing_value(sf, sf.default))
         else:
             if redact and sf.redact:
-                lines.append(f"    {sf.key}: {REDACTED_TEXT}")
+                lines.append(f"{field.key}.{sf.key}:")
+                lines.append(REDACTED_TEXT)
             else:
-                lines.append(f"    {sf.key}: <{sf.label.lower()}>")
+                lines.append(f"{field.key}.{sf.key}:")
+                lines.append(f"<{sf.label.lower()}>")
 
     return lines
 
 
 def _format_existing_value(field: FieldDef, value: Any) -> str:
-    """Format an existing value for YAML output."""
+    """Format an existing value for SCN output."""
     if value is None:
         return ""
     if field.type == "boolean":
         return str(bool(value)).lower()
-    if field.type == "multiline" and isinstance(value, str) and "\n" in value:
-        # Use YAML literal block indicator
-        indented = "\n".join(f"    {line}" for line in value.splitlines())
-        return f"|\n{indented}"
     if isinstance(value, (date, datetime)):
         return value.strftime("%Y-%m-%d")
     return str(value)
@@ -288,7 +299,7 @@ def generate_schema_reference(schema: Schema) -> str:
     without sending a full fill-in prompt. The LLM can then answer questions
     about what fields exist, what's required, etc.
     """
-    lines = []
+    lines: list[str] = []
     lines.append(f"# Schema Reference: {schema.name}")
     lines.append(f"# ID: {schema.id} | Version: {schema.version}")
     lines.append(

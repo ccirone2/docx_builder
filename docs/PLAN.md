@@ -1,11 +1,20 @@
 # Development Plan
 
-## Status: Issue #14 Complete
+## Status: Issue #15 Complete
 
-**Issue:** [#14 — Revamp data entry sheets: single-column SCN layout](https://github.com/ccirone2/docx_builder/issues/14)
+**Issue:** [#15 — Replace YAML data exchange with SCN text format](https://github.com/ccirone2/docx_builder/issues/15)
 
-All 12 build phases (1, 1b, 2a, A–H), 5 maintenance plans, and issue #14 done.
-215 tests across 14 files, all passing, lint clean.
+All 12 build phases (1, 1b, 2a, A–H), 5 maintenance plans, issues #14 and #15 done.
+216 tests across 14 files, all passing, lint clean.
+
+---
+
+## Issue #15 — Tasks (all complete)
+
+- ✅ **15a**: Migrate `data_exchange.py` from YAML to SCN
+- ✅ **15b**: Migrate `llm_helpers.py` to SCN format
+- ✅ **15c**: Workbook, control sheet, and local runner renames
+- ✅ **15d**: Documentation and cleanup
 
 ---
 
@@ -19,10 +28,9 @@ All 12 build phases (1, 1b, 2a, A–H), 5 maintenance plans, and issue #14 done.
 
 ---
 
-## Backlog (unchanged)
+## Backlog
 
 - [ ] More schemas: Change Order, Bid Tabulation, Safety Plan
 - [ ] Template system v2: docxtpl hosted templates
 - [ ] Contribution tooling: schema/template validation CLI
 - [ ] Workbook distribution: pre-built .xlsx with embedded scripts
-- [ ] Issue #15: Replace YAML data exchange with SCN text format (depends on #14)

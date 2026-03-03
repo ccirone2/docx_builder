@@ -126,6 +126,27 @@ issue #15 (data exchange format). Trade-off: single-column layout is less
 visually polished than label/value columns, but SCN comments (`;;`) provide
 field labels for guidance.
 
+## ADR-014: SCN for All Data Exchange (Issue #15)
+**Date:** 2026-03-03
+**Context:** `data_exchange.py` and `llm_helpers.py` used YAML for all user
+data exchange: exporting from Excel, importing back, LLM fill-in prompts,
+and clipboard staging. YAML caused friction for non-technical users
+(indentation sensitivity, special character escaping) and added a PyYAML
+dependency in the data path. Issue #14 already established `engine/scn.py`
+with `parse()`, `parse_entry()`, and `serialize()` for the Excel data entry
+sheets, proving SCN reliable.
+**Decision:** Replace YAML with SCN in `data_exchange.py` (export_snapshot /
+import_snapshot) and `llm_helpers.py` (generate_llm_prompt). Remove
+`import yaml` from both modules. Keep YAML only for schema definitions
+(`schemas/*.yaml`) and the schema registry.
+**Consequences:** Data exchange is now format-consistent with the Excel sheets
+(both use SCN). PyYAML is no longer needed in the data path — only for schema
+loading. LLM prompts use `;;` comment syntax and SCN `key:`/value pairs,
+which are simpler for LLMs to follow than YAML indentation. Button labels
+simplified from "Export Data (YAML)" to "Export Data". Backward-compatible
+aliases (`export_data_yaml`, `import_data_yaml`) kept in runner/loader for
+existing button bindings.
+
 ## ADR-010: Local Development Harness with MockBook
 **Date:** 2026-03-02
 **Context:** Need Claude Code to run the engine pipeline locally and verify

@@ -4,6 +4,8 @@ A structured data format designed for entry in a single spreadsheet column, one 
 
 All parsed values are returned as strings. Type casting and validation are the responsibility of a separate layer.
 
+**Implementation:** `engine/scn.py`
+
 ---
 
 ## Constructs
@@ -111,7 +113,7 @@ Rules:
 - Only recognized when `;;` appears at the very start of the line (after stripping whitespace).
 - Comments can appear anywhere: between sections, between keys and values, inside list blocks.
 - There is no inline comment syntax. A `;;` appearing mid-value is treated as part of the value.
-- When a `key:` is waiting for its value, the next non-empty line is always consumed as the value, The double semicolon was chosen to minimize conflict with legitimate values. Single characters like `#` conflict with Slack channels, hex colors, and markdown.
+- When a `key:` is waiting for its value, the next non-empty line is always consumed as the value. The double semicolon was chosen to minimize conflict with legitimate values. Single characters like `#` conflict with Slack channels, hex colors, and markdown.
 
 ### 6. Empty Rows
 
@@ -130,6 +132,7 @@ When the parser encounters a line, it checks in this order:
 5. **Dict list entry** — starts with `+` (not `+ `)
 6. **List item** — starts with `- `
 7. **Key declaration** — ends with `:`
+
 ---
 
 ## Scope and Nesting Summary
@@ -141,3 +144,147 @@ When the parser encounters a line, it checks in this order:
 | `key:` + `- ` | key holding a list of strings | next non-`- ` line |
 | `+name` | list of dicts called `name` | next `+name` (same level) or `[section]` |
 | `;; text` | nothing (ignored) | end of line |
+
+---
+
+## Parser Variants
+
+SCN provides two parsers:
+
+- **`parse(cells)`** — General-purpose parser. The next non-empty line after a `key:` is consumed as its value. Suitable for configuration files and serialized snapshots.
+- **`parse_entry(cells)`** — Data-entry variant. Always consumes the very next cell after `key:`, even if empty. Designed for Excel data entry sheets where unfilled fields are empty cells.
+
+---
+
+## Serializer
+
+**`serialize(data)`** converts a Python dict back to SCN lines:
+
+- Root-level non-dict values are emitted as `key:` / value pairs
+- Top-level dict values become `[section]` blocks
+- Nested dicts use dot notation
+- Lists of strings use `- item` syntax
+- Lists of dicts use `+name` entries
+
+---
+
+## Examples
+
+### Simple Key-Value Config
+
+~~~
+[settings]
+app_name:
+TaskTracker
+version:
+1.4
+debug:
+false
+~~~
+
+Result: `{"settings": {"app_name": "TaskTracker", "version": "1.4", "debug": "false"}}`
+
+### Nested Keys with Dot Notation
+
+~~~
+[email]
+smtp.host:
+mail.example.com
+smtp.port:
+587
+smtp.tls:
+true
+~~~
+
+Result: `{"email": {"smtp": {"host": "mail.example.com", "port": "587", "tls": "true"}}}`
+
+### Simple Lists
+
+~~~
+[project]
+languages:
+- python
+- javascript
+- sql
+~~~
+
+Result: `{"project": {"languages": ["python", "javascript", "sql"]}}`
+
+### List of Dicts
+
+~~~
++users
+name:
+Alice
+role:
+admin
++users
+name:
+Bob
+role:
+viewer
+~~~
+
+Result: `{"users": [{"name": "Alice", "role": "admin"}, {"name": "Bob", "role": "viewer"}]}`
+
+### Nested Dict Lists
+
+~~~
+[school]
++classes
+name:
+Biology 101
++students
+name:
+Emma
+grade:
+A
++students
+name:
+James
+grade:
+B+
++classes
+name:
+History 201
++students
+name:
+Olivia
+grade:
+A-
+~~~
+
+Result: Two classes, first with 2 students, second with 1 student.
+
+### Data Exchange Snapshot
+
+This is the format used by `data_exchange.py` for exporting/importing user data:
+
+~~~
+[_meta]
+schema_id:
+rfq_electric_utility
+schema_version:
+1.0
+export_type:
+full_snapshot
+redacted:
+false
+
+[issuing_organization]
+issuer_name:
+Ozark Electric Cooperative
+issuer_address:
+516 E Hwy 76, Branson MO
+
+[scope_of_work]
+scope_summary:
+Replace 45 wooden poles with steel
++work_items
+item_number:
+1
+description:
+Set steel poles
+quantity:
+45
+~~~

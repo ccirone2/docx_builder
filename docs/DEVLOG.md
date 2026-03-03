@@ -1,5 +1,49 @@
 # Development Log
 
+## 2026-03-03 — Issue #15: Replace YAML Data Exchange with SCN
+
+Migrated all data exchange paths from YAML to SCN format. YAML is now used
+only for schema definitions (`schemas/*.yaml`) and the registry.
+
+### Task 15a: Migrate data_exchange.py
+- Removed `import yaml`, `_YAMLDumper`, `_to_yaml()` from `data_exchange.py`
+- `export_snapshot()` now uses `scn.serialize()` to produce SCN text
+- `import_snapshot()` now uses `scn.parse_entry()` to parse SCN text
+- `_serialize_value()` converts booleans to string "true"/"false" for SCN
+- `_deserialize_value()` handles SCN's all-strings-by-default nature
+- Updated `test_data_exchange.py`, `test_edge_cases.py`, `test_integration.py`
+
+### Task 15b: Migrate llm_helpers.py
+- Rewrote `generate_llm_prompt()` with SCN syntax (`;;` comments, `key:`/value,
+  `[sections]`, `+entry` for tables, dot notation for compound fields)
+- Replaced `START YAML`/`END YAML` markers with `START SCN`/`END SCN`
+- Instructions header references SCN rules instead of YAML indentation/quoting
+- Updated `test_llm_prompt_markers` assertion
+
+### Task 15c: Renames
+- `excel_control.py`: Button labels `"Export Data (YAML)"` → `"Export Data"`,
+  `"Import Data (YAML)"` → `"Import Data"`
+- `workbook/runner.py`: `YAML_STAGING_CELL` → `DATA_STAGING_CELL`,
+  `export_data_yaml()` → `export_data()`, `import_data_yaml()` → `import_data()`
+  Added backward-compat aliases.
+- `workbook/loader.py`: Same renames + backward-compat aliases
+- `dev/local_runner.py`: `export_yaml()` → `export_scn()`
+- Updated `test_local_runner.py` and `test_excel_builder.py` assertions
+
+### Task 15d: Documentation
+- Created `docs/SCN.md` — living SCN spec (merged from docs/change/)
+- Deleted `docs/change/` directory
+- Updated ARCHITECTURE.md, CLAUDE.md, USER_GUIDE.md, PLAN.md, DECISIONS.md
+- Added ADR-014 for SCN data exchange adoption
+
+**Files modified:** engine/data_exchange.py, engine/llm_helpers.py,
+  engine/excel_control.py, workbook/runner.py, workbook/loader.py,
+  dev/local_runner.py, tests/test_data_exchange.py, tests/test_edge_cases.py,
+  tests/test_integration.py, tests/test_local_runner.py, tests/test_excel_builder.py
+**Files created:** docs/SCN.md
+**Files deleted:** docs/change/ (scn_rules.md, scn_examples.md, scn.py)
+**Test count:** 216 tests across 14 files (unchanged from #14)
+
 ## 2026-02-28 — Initial Architecture & Schema System
 
 Designed and implemented the core schema system for the RFQ document

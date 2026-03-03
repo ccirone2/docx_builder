@@ -26,7 +26,7 @@ _engine: dict[str, dict] = {}
 
 # Cell addresses on the Control sheet
 SCHEMA_DROPDOWN_CELL = "B3"
-YAML_STAGING_CELL = "D20"
+DATA_STAGING_CELL = "D20"
 
 # Module dependency graph (engine modules only)
 _MODULE_DEPS: dict[str, list[str]] = {
@@ -282,8 +282,8 @@ def _build_control_sheet(book: Any) -> None:
         (5, "Initialize Sheets"),
         (7, "Generate Document"),
         (9, "Validate Data"),
-        (11, "Export Data (YAML)"),
-        (13, "Import Data (YAML)"),
+        (11, "Export Data"),
+        (13, "Import Data"),
         (15, "Generate LLM Prompt"),
         (17, "Load Custom Schema"),
         (19, "Load Custom Template"),
@@ -494,9 +494,9 @@ def validate_data(book: Any) -> None:
         _report_error(book, e)
 
 
-def export_data_yaml(book: Any) -> None:
-    """Export data to YAML, write to staging cell."""
-    _set_status(book, "export_data_yaml triggered")
+def export_data(book: Any) -> None:
+    """Export data to staging cell."""
+    _set_status(book, "export_data triggered")
     try:
         _set_status(book, "Exporting...")
         result = _prepare_schema(book)
@@ -507,35 +507,40 @@ def export_data_yaml(book: Any) -> None:
         control = book.sheets["Control"]
         redact = bool(control["D16"].value)
         exchange = _load_module("data_exchange")
-        yaml_output = exchange["export_snapshot"](schema, data, redact=redact)
-        control[YAML_STAGING_CELL].value = yaml_output
-        _set_status(book, "Data exported to YAML (see staging cell)")
+        output = exchange["export_snapshot"](schema, data, redact=redact)
+        control[DATA_STAGING_CELL].value = output
+        _set_status(book, "Data exported (see staging cell)")
     except Exception as e:
         _report_error(book, e)
 
 
-def import_data_yaml(book: Any) -> None:
-    """Import YAML data from the staging cell."""
-    _set_status(book, "import_data_yaml triggered")
+def import_data(book: Any) -> None:
+    """Import data from the staging cell."""
+    _set_status(book, "import_data triggered")
     try:
         _set_status(book, "Importing...")
         control = book.sheets["Control"]
-        yaml_text = control[YAML_STAGING_CELL].value
-        if not yaml_text:
-            _set_status(book, "Error: No YAML data in staging cell")
+        scn_text = control[DATA_STAGING_CELL].value
+        if not scn_text:
+            _set_status(book, "Error: No data in staging cell")
             return
         result = _prepare_schema(book)
         if result is None:
             return
         schema, entry = result
         exchange = _load_module("data_exchange")
-        data, warnings = exchange["import_snapshot"](schema, str(yaml_text))
+        data, warnings = exchange["import_snapshot"](schema, str(scn_text))
         if warnings:
             _set_status(book, f"Imported with {len(warnings)} warnings")
         else:
             _set_status(book, f"Data imported successfully ({len(data)} fields)")
     except Exception as e:
         _report_error(book, e)
+
+
+# Backward-compatible aliases so existing button bindings still work
+export_data_yaml = export_data
+import_data_yaml = import_data
 
 
 def generate_llm_prompt(book: Any) -> None:
@@ -551,7 +556,7 @@ def generate_llm_prompt(book: Any) -> None:
         llm = _load_module("llm_helpers")
         prompt = llm["generate_llm_prompt"](schema, existing_data=data, redact=True)
         control = book.sheets["Control"]
-        control[YAML_STAGING_CELL].value = prompt
+        control[DATA_STAGING_CELL].value = prompt
         _set_status(book, "LLM prompt generated (see staging cell)")
     except Exception as e:
         _report_error(book, e)
@@ -564,10 +569,10 @@ def load_custom_schema(book: Any) -> None:
         _set_status(book, "Loading custom schema...")
 
         control = book.sheets["Control"]
-        yaml_text = control[YAML_STAGING_CELL].value
+        yaml_text = control[DATA_STAGING_CELL].value
 
         if not yaml_text:
-            _set_status(book, "Error: No YAML in staging cell")
+            _set_status(book, "Error: No schema YAML in staging cell")
             return
 
         gh_loader = _load_module("github_loader")
@@ -590,7 +595,7 @@ def load_custom_template(book: Any) -> None:
         _set_status(book, "Loading custom template...")
 
         control = book.sheets["Control"]
-        source = control[YAML_STAGING_CELL].value
+        source = control[DATA_STAGING_CELL].value
 
         if not source:
             _set_status(book, "Error: No template source in staging cell")

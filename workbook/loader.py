@@ -114,15 +114,20 @@ def validate_data(book: xw.Book) -> None:
 
 
 @xw.script
-def export_data_yaml(book: xw.Book) -> None:
-    """Export data to YAML in the staging cell."""
-    _call(book, "export_data_yaml")
+def export_data(book: xw.Book) -> None:
+    """Export data to the staging cell."""
+    _call(book, "export_data")
 
 
 @xw.script
-def import_data_yaml(book: xw.Book) -> None:
-    """Import YAML data from the staging cell."""
-    _call(book, "import_data_yaml")
+def import_data(book: xw.Book) -> None:
+    """Import data from the staging cell."""
+    _call(book, "import_data")
+
+
+# Backward-compatible aliases so existing button bindings still work
+export_data_yaml = export_data
+import_data_yaml = import_data
 
 
 @xw.script
