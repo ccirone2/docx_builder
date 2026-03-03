@@ -51,7 +51,8 @@ Before ending ANY session, always:
 
 ## Architecture Quick Reference
 - `engine/schema_loader.py` — YAML → Schema objects, validation, compound fields
-- `engine/data_exchange.py` — YAML import/export, redaction (no LLM logic)
+- `engine/scn.py` — Single-Column Notation parser/serializer
+- `engine/data_exchange.py` — SCN import/export, redaction (no LLM logic)
 - `engine/llm_helpers.py` — LLM prompt generation (`generate_llm_prompt`, `generate_schema_reference`)
 - `engine/github_loader.py` — Fetch schemas/templates from GitHub + local
 - `engine/config.py` — Pyodide-aware settings, `IS_PYODIDE` constant

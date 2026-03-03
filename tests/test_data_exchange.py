@@ -40,10 +40,18 @@ def test_export_redacted_flexible(rfq_schema: Schema, sample_data: dict) -> None
     assert "Random testing required" not in output
 
 
+def test_export_produces_scn_structure(rfq_schema: Schema, sample_data: dict) -> None:
+    """Export produces SCN with [sections] and key: lines."""
+    output = export_snapshot(rfq_schema, sample_data, redact=False)
+    assert "[_meta]" in output
+    assert "schema_id:" in output
+    assert "rfq_electric_utility" in output
+
+
 def test_import_round_trip(rfq_schema: Schema, sample_data: dict) -> None:
     """Export then import: non-None values match."""
-    yaml_text = export_snapshot(rfq_schema, sample_data, redact=False)
-    imported, warnings = import_snapshot(rfq_schema, yaml_text)
+    scn_text = export_snapshot(rfq_schema, sample_data, redact=False)
+    imported, warnings = import_snapshot(rfq_schema, scn_text)
 
     # Check key fields survived
     assert imported.get("rfq_number") == "RFQ-2026-042"
@@ -54,16 +62,16 @@ def test_import_round_trip(rfq_schema: Schema, sample_data: dict) -> None:
 
 def test_import_redacted_is_none(rfq_schema: Schema, sample_data: dict) -> None:
     """Importing [REDACTED] values results in None."""
-    yaml_text = export_snapshot(rfq_schema, sample_data, redact=True)
-    imported, _ = import_snapshot(rfq_schema, yaml_text)
+    scn_text = export_snapshot(rfq_schema, sample_data, redact=True)
+    imported, _ = import_snapshot(rfq_schema, scn_text)
     assert imported.get("issuer_name") is None
     assert imported.get("issuer_contact_email") is None
 
 
 def test_compound_round_trip(rfq_schema: Schema, sample_data: dict) -> None:
     """Compound field round-trips: dict in, dict out with correct sub-fields."""
-    yaml_text = export_snapshot(rfq_schema, sample_data, redact=False)
-    imported, _ = import_snapshot(rfq_schema, yaml_text)
+    scn_text = export_snapshot(rfq_schema, sample_data, redact=False)
+    imported, _ = import_snapshot(rfq_schema, scn_text)
 
     safety = imported.get("safety_requirements")
     assert isinstance(safety, dict)
@@ -73,10 +81,10 @@ def test_compound_round_trip(rfq_schema: Schema, sample_data: dict) -> None:
 
 
 def test_llm_prompt_markers(rfq_schema: Schema, sample_data: dict) -> None:
-    """LLM prompt contains START YAML and END YAML markers."""
+    """LLM prompt contains START SCN and END SCN markers."""
     prompt = generate_llm_prompt(rfq_schema, sample_data)
-    assert "START YAML" in prompt
-    assert "END YAML" in prompt
+    assert "START SCN" in prompt
+    assert "END SCN" in prompt
 
 
 def test_llm_prompt_redaction_rule(rfq_schema: Schema, sample_data: dict) -> None:

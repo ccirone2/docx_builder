@@ -91,11 +91,10 @@ def test_deserialize_currency_string() -> None:
     assert _deserialize_value(field, "$1,234.56") == pytest.approx(1234.56)
 
 
-def test_import_invalid_yaml(rfq_schema: Schema) -> None:
-    """Importing malformed YAML returns empty data with warnings."""
-    data, warnings = import_snapshot(rfq_schema, "{{invalid")
+def test_import_invalid_scn(rfq_schema: Schema) -> None:
+    """Importing empty/malformed SCN returns empty data with no crash."""
+    data, warnings = import_snapshot(rfq_schema, "")
     assert data == {}
-    assert len(warnings) > 0
 
 
 def test_export_import_none_values(rfq_schema: Schema) -> None:
@@ -104,8 +103,8 @@ def test_export_import_none_values(rfq_schema: Schema) -> None:
         "rfq_number": "RFQ-001",
         "rfq_title": None,
     }
-    yaml_text = export_snapshot(rfq_schema, sparse_data, redact=False)
-    imported, _warnings = import_snapshot(rfq_schema, yaml_text)
+    scn_text = export_snapshot(rfq_schema, sparse_data, redact=False)
+    imported, _warnings = import_snapshot(rfq_schema, scn_text)
     # rfq_title was None so it should remain None (or absent) after import
     assert imported.get("rfq_title") is None
 

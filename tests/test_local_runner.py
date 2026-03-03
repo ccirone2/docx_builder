@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dev.local_runner import (
-    export_yaml,
+    export_scn,
     fill_data,
     generate,
     init_workbook,
@@ -194,18 +194,18 @@ class TestGenerate:
 
 
 # ---------------------------------------------------------------------------
-# export_yaml
+# export_scn
 # ---------------------------------------------------------------------------
 
 
-class TestExportYaml:
-    def test_produces_yaml(self, rfq_schema: Schema, sample_data: dict):
-        yaml_str = export_yaml(rfq_schema, sample_data)
-        assert isinstance(yaml_str, str)
-        assert "schema_id" in yaml_str
-        assert "rfq_electric_utility" in yaml_str
+class TestExportScn:
+    def test_produces_scn(self, rfq_schema: Schema, sample_data: dict):
+        scn_str = export_scn(rfq_schema, sample_data)
+        assert isinstance(scn_str, str)
+        assert "schema_id" in scn_str
+        assert "rfq_electric_utility" in scn_str
 
     def test_redacted_export(self, rfq_schema: Schema, sample_data: dict):
-        yaml_str = export_yaml(rfq_schema, sample_data, redact=True)
-        assert isinstance(yaml_str, str)
-        assert "redacted: true" in yaml_str
+        scn_str = export_scn(rfq_schema, sample_data, redact=True)
+        assert isinstance(scn_str, str)
+        assert "[REDACTED]" in scn_str

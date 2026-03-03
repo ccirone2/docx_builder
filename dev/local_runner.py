@@ -9,7 +9,7 @@ Functions:
   - fill_data: Write a data dict into workbook via SCN layout
   - validate: Run schema validation on data
   - generate: Produce a python-docx Document
-  - export_yaml: Serialize data to YAML
+  - export_scn: Serialize data to SCN
 """
 
 from __future__ import annotations
@@ -285,12 +285,12 @@ def generate(
     return doc
 
 
-def export_yaml(
+def export_scn(
     schema: Schema,
     data: dict[str, Any],
     redact: bool = False,
 ) -> str:
-    """Export data as a YAML string.
+    """Export data as an SCN string.
 
     Args:
         schema: The schema definition.
@@ -298,6 +298,6 @@ def export_yaml(
         redact: If True, mask fields marked redact=true.
 
     Returns:
-        YAML string.
+        SCN string.
     """
     return export_snapshot(schema, data, redact=redact)

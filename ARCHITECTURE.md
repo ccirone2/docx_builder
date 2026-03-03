@@ -93,7 +93,8 @@ docgen/
 │   ├── config.py                       # Settings, GitHub URLs, IS_PYODIDE constant
 │   ├── log.py                          # Timestamped logging helpers
 │   ├── schema_loader.py                # Parse YAML → Schema objects
-│   ├── data_exchange.py                # Import/export YAML, redaction (no LLM)
+│   ├── scn.py                          # Single-Column Notation parser/serializer
+│   ├── data_exchange.py                # Import/export SCN, redaction (no LLM)
 │   ├── llm_helpers.py                  # LLM prompt generation, schema reference
 │   ├── doc_generator.py                # Merge data → .docx in memory
 │   ├── excel_plan.py                   # CellInstruction/SheetPlan/TablePlan dataclasses + planning
@@ -116,12 +117,13 @@ docgen/
 ├── docs/
 │   ├── CONTRIBUTING.md                 # How to contribute schemas/templates
 │   ├── SCHEMA_AUTHORING.md             # How to write a new schema
+│   ├── SCN.md                          # SCN format specification
 │   └── USER_GUIDE.md                   # End-user documentation
 │
-└── tests/                              # Schema + engine tests (99 tests)
+└── tests/                              # Schema + engine tests (216 tests)
     ├── conftest.py                     # Shared fixtures
     ├── test_schema_loader.py
-    ├── test_data_exchange.py           # YAML import/export, redaction (LLM fns → llm_helpers)
+    ├── test_data_exchange.py           # SCN import/export, redaction, LLM prompts
     ├── test_github_loader.py
     ├── test_excel_builder.py           # Imports from excel_plan, excel_control, excel_writer
     ├── test_doc_generator.py
@@ -470,7 +472,7 @@ Control Sheet Layout:
 │                       │                 │                │
 │  [Initialize Sheets]  │  [Generate Doc] │  [Validate]    │
 │                       │                 │                │
-│  [Export Data (YAML)] │  [Import Data]  │  [LLM Prompt]  │
+│  [Export Data]        │  [Import Data]  │  [LLM Prompt]  │
 │                       │                 │                │
 │  Status:              │  Ready          │                │
 │                       │                 │                │
@@ -492,7 +494,7 @@ Control Sheet Layout:
 | Phase | Component                  | Description                                    |
 |-------|----------------------------|------------------------------------------------|
 | ✅ 1  | Schema system              | YAML format + loader + validator + compound     |
-| ✅ 1b | Data exchange              | YAML import/export + LLM prompt + redaction     |
+| ✅ 1b | Data exchange              | SCN import/export + LLM prompt + redaction       |
 | ✅ 2  | GitHub loader              | Fetch registry, schemas from GitHub + caching   |
 | ✅ 3  | Excel builder              | Auto-generate data entry sheets from schema     |
 | ✅ 4  | Document builder           | python-docx programmatic templates              |
@@ -510,7 +512,7 @@ Control Sheet Layout:
 | Package      | Wheel Type       | Purpose                              |
 |--------------|------------------|--------------------------------------|
 | `xlwings`    | pure Python      | Excel ↔ Python bridge (Lite add-in) |
-| `pyyaml`     | Pyodide built-in | Schema parsing                       |
+| `pyyaml`     | Pyodide built-in | Schema definitions + registry parsing |
 | `python-docx`| pure Python      | Word document generation             |
 | `requests`   | Pyodide built-in | HTTP fetching from GitHub            |
 | `docxtpl`    | pure Python      | Template-based doc generation (v2)   |

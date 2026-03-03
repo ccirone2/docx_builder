@@ -28,9 +28,9 @@ def test_full_pipeline_validate_and_generate(
 def test_export_import_round_trip(
     rfq_schema: Schema, sample_data: dict[str, Any]
 ) -> None:
-    """Exported YAML can be re-imported with key fields surviving intact."""
-    yaml_text = export_snapshot(rfq_schema, sample_data, redact=False)
-    imported, warnings = import_snapshot(rfq_schema, yaml_text)
+    """Exported SCN can be re-imported with key fields surviving intact."""
+    scn_text = export_snapshot(rfq_schema, sample_data, redact=False)
+    imported, warnings = import_snapshot(rfq_schema, scn_text)
 
     assert imported.get("issuer_name") == "Ozark Electric Cooperative"
     assert imported.get("rfq_title") == "Distribution Line Reconstruction - Hwy 65 Corridor"
@@ -41,8 +41,8 @@ def test_redacted_export_import(
     rfq_schema: Schema, sample_data: dict[str, Any]
 ) -> None:
     """Redacted export replaces sensitive fields; import converts them to None."""
-    yaml_text = export_snapshot(rfq_schema, sample_data, redact=True)
-    imported, _warnings = import_snapshot(rfq_schema, yaml_text)
+    scn_text = export_snapshot(rfq_schema, sample_data, redact=True)
+    imported, _warnings = import_snapshot(rfq_schema, scn_text)
 
     # issuer_contact_email is marked redact=True in the schema
     assert imported.get("issuer_contact_email") is None
