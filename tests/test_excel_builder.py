@@ -68,23 +68,23 @@ def test_data_entry_section_headers_styled(rfq_schema: Schema) -> None:
 def test_data_entry_has_key_declarations(rfq_schema: Schema) -> None:
     """Fields produce key: declaration rows that are bold."""
     instrs, _ = plan_data_entry(rfq_schema)
-    keys = [i for i in instrs if str(i.value).endswith(":") and not str(i.value).startswith(";;")]
+    keys = [i for i in instrs if str(i.value).endswith(":")]
     assert len(keys) > 0
     assert all(k.bold for k in keys)
 
 
-def test_data_entry_has_comment_labels(rfq_schema: Schema) -> None:
-    """Fields produce ;; label comment rows."""
+def test_data_entry_no_comment_labels(rfq_schema: Schema) -> None:
+    """No ;; comment labels before keys (only table headers use ;;)."""
     instrs, _ = plan_data_entry(rfq_schema)
     comments = [i for i in instrs if str(i.value).startswith(";;")]
-    assert len(comments) > 0
+    assert len(comments) == 0
 
 
-def test_data_entry_required_fields_marked(rfq_schema: Schema) -> None:
-    """Required field labels have * suffix."""
+def test_data_entry_no_required_indicators(rfq_schema: Schema) -> None:
+    """No required field indicators (* suffix) in data entry."""
     instrs, _ = plan_data_entry(rfq_schema)
-    required_comments = [i for i in instrs if str(i.value).endswith(" *")]
-    assert len(required_comments) > 0
+    starred = [i for i in instrs if str(i.value).endswith(" *")]
+    assert len(starred) == 0
 
 
 def test_data_entry_has_value_cells_with_field_key(rfq_schema: Schema) -> None:
@@ -115,14 +115,14 @@ def test_data_entry_compound_field_dot_notation(rfq_schema: Schema) -> None:
     assert len(safety_keys) >= 1
 
 
-def test_data_entry_compound_has_label_header(rfq_schema: Schema) -> None:
-    """Compound fields have a ;; label header row."""
+def test_data_entry_no_compound_label_header(rfq_schema: Schema) -> None:
+    """Compound fields have no separate label header — just key: rows."""
     instrs, _ = plan_data_entry(rfq_schema)
     compound_labels = [
         i for i in instrs
-        if i.is_header and str(i.value).startswith(";;") and "Safety" in str(i.value)
+        if i.is_header and str(i.value).startswith(";;")
     ]
-    assert len(compound_labels) >= 1
+    assert len(compound_labels) == 0
 
 
 def test_data_entry_all_on_data_entry_sheet(rfq_schema: Schema) -> None:

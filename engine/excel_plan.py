@@ -98,8 +98,8 @@ def _table_sheet_name(field_label: str) -> str:
 def plan_data_entry(schema: Schema) -> tuple[list[CellInstruction], int]:
     """Plan the Data Entry sheet with SCN layout in column A.
 
-    Produces one row per SCN construct: section headers, comment labels,
-    key declarations, and empty value cells. All in column 1.
+    Produces key declarations and empty value cells for each field,
+    grouped under [Section] headers. All in column 1.
 
     Args:
         schema: The active schema definition.
@@ -133,12 +133,12 @@ def plan_data_entry(schema: Schema) -> tuple[list[CellInstruction], int]:
         for field in non_table:
             if field.is_compound:
                 instrs.extend(_compound_field_rows(field, row))
-                # Count rows: 1 compound label + per sub-field (label + key + value)
-                row += 1 + len(field.sub_fields or []) * 3
+                # 2 rows per sub-field: key + value
+                row += len(field.sub_fields or []) * 2
             else:
                 instrs.extend(_simple_field_rows(field, row))
-                # 3 rows: comment label + key + value
-                row += 3
+                # 2 rows: key + value
+                row += 2
 
         # Blank row between groups
         row += 1
@@ -149,21 +149,13 @@ def plan_data_entry(schema: Schema) -> tuple[list[CellInstruction], int]:
 def _simple_field_rows(field: FieldDef, start_row: int) -> list[CellInstruction]:
     """Generate SCN rows for a simple (non-compound, non-table) field.
 
-    Produces 3 rows: comment label, key declaration, value cell.
+    Produces 2 rows: key declaration, value cell.
     """
-    suffix = " *" if field.required else ""
     return [
-        # ;; Field Label
-        CellInstruction(
-            sheet=SHEET_DATA_ENTRY,
-            row=start_row,
-            col=1,
-            value=f"{SCN_COMMENT_PREFIX} {field.label}{suffix}",
-        ),
         # field_key:
         CellInstruction(
             sheet=SHEET_DATA_ENTRY,
-            row=start_row + 1,
+            row=start_row,
             col=1,
             value=f"{field.key}:",
             bold=True,
@@ -171,7 +163,7 @@ def _simple_field_rows(field: FieldDef, start_row: int) -> list[CellInstruction]
         # (empty value cell)
         CellInstruction(
             sheet=SHEET_DATA_ENTRY,
-            row=start_row + 2,
+            row=start_row + 1,
             col=1,
             value="",
             field_key=field.key,
@@ -182,41 +174,19 @@ def _simple_field_rows(field: FieldDef, start_row: int) -> list[CellInstruction]
 def _compound_field_rows(field: FieldDef, start_row: int) -> list[CellInstruction]:
     """Generate SCN rows for a compound field and its sub-fields.
 
-    Produces: 1 compound label row + 3 rows per sub-field.
+    Produces 2 rows per sub-field: key declaration, value cell.
     """
     instrs: list[CellInstruction] = []
-
-    # ;; Compound Label
-    instrs.append(
-        CellInstruction(
-            sheet=SHEET_DATA_ENTRY,
-            row=start_row,
-            col=1,
-            value=f"{SCN_COMMENT_PREFIX} {field.label}",
-            bold=True,
-            is_header=True,
-        )
-    )
-    row = start_row + 1
+    row = start_row
 
     for sf in field.sub_fields or []:
-        suffix = " *" if sf.required else ""
         dotted_key = f"{field.key}.{sf.key}"
 
-        # ;; Sub-field Label
-        instrs.append(
-            CellInstruction(
-                sheet=SHEET_DATA_ENTRY,
-                row=row,
-                col=1,
-                value=f"{SCN_COMMENT_PREFIX} {sf.label}{suffix}",
-            )
-        )
         # parent_key.sub_key:
         instrs.append(
             CellInstruction(
                 sheet=SHEET_DATA_ENTRY,
-                row=row + 1,
+                row=row,
                 col=1,
                 value=f"{dotted_key}:",
                 bold=True,
@@ -226,13 +196,13 @@ def _compound_field_rows(field: FieldDef, start_row: int) -> list[CellInstructio
         instrs.append(
             CellInstruction(
                 sheet=SHEET_DATA_ENTRY,
-                row=row + 2,
+                row=row + 1,
                 col=1,
                 value="",
                 field_key=dotted_key,
             )
         )
-        row += 3
+        row += 2
 
     return instrs
 

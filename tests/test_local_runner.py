@@ -74,7 +74,7 @@ class TestInitWorkbook:
             v = sheet.range((r, 1)).value
             if v is not None:
                 values.append(str(v))
-        keys = [v for v in values if v.endswith(":") and not v.startswith(";;")]
+        keys = [v for v in values if v.endswith(":")]
         assert "issuer_name:" in keys
         assert "rfq_number:" in keys
 
