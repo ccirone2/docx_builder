@@ -25,8 +25,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from engine.config import (
-    HEADER_COLOR,
-    HEADER_FONT_COLOR,
     SCN_COMMENT_PREFIX,
     SHEET_DATA_ENTRY,
 )
@@ -109,11 +107,17 @@ def plan_data_entry(schema: Schema) -> tuple[list[CellInstruction], int]:
     """
     instrs: list[CellInstruction] = []
     row = 1
+    first_group = True
 
     for group in schema.all_groups:
         non_table = [f for f in group.fields if not f.is_table]
         if not non_table:
             continue
+
+        # Two blank rows before each section header (except the first)
+        if not first_group:
+            row += 2
+        first_group = False
 
         # [Group Name] — section header
         instrs.append(
@@ -123,8 +127,6 @@ def plan_data_entry(schema: Schema) -> tuple[list[CellInstruction], int]:
                 col=1,
                 value=f"[{group.name}]",
                 bold=True,
-                bg_color=HEADER_COLOR,
-                font_color=HEADER_FONT_COLOR,
                 is_header=True,
             )
         )
@@ -139,9 +141,6 @@ def plan_data_entry(schema: Schema) -> tuple[list[CellInstruction], int]:
                 instrs.extend(_simple_field_rows(field, row))
                 # 2 rows: key + value
                 row += 2
-
-        # Blank row between groups
-        row += 1
 
     return instrs, row
 

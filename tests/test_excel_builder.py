@@ -56,13 +56,13 @@ def test_data_entry_has_section_headers(rfq_schema: Schema) -> None:
 
 
 def test_data_entry_section_headers_styled(rfq_schema: Schema) -> None:
-    """Section headers have bold + header color."""
+    """Section headers are bold with no background/font color."""
     instrs, _ = plan_data_entry(rfq_schema)
     sections = [i for i in instrs if i.is_header and str(i.value).startswith("[")]
     for s in sections:
         assert s.bold
-        assert s.bg_color != ""
-        assert s.font_color != ""
+        assert s.bg_color == ""
+        assert s.font_color == ""
 
 
 def test_data_entry_has_key_declarations(rfq_schema: Schema) -> None:
