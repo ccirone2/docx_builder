@@ -1,13 +1,13 @@
 """Tests for engine/excel_plan.py and engine/excel_control.py — pure logic layer."""
 from __future__ import annotations
 
+from engine.excel_control import plan_control_sheet
 from engine.excel_plan import (
     CellInstruction,
     plan_group_layout,
     plan_sheets,
     plan_table_layout,
 )
-from engine.excel_control import plan_control_sheet
 from engine.schema_loader import Schema
 
 

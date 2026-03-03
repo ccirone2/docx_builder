@@ -7,7 +7,6 @@ import pytest
 
 from dev.mock_book import MockBook, MockCell, MockSheet, _a1_to_rowcol
 
-
 # ---------------------------------------------------------------------------
 # A1 notation parsing
 # ---------------------------------------------------------------------------
