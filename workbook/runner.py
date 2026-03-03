@@ -237,8 +237,12 @@ def _read_table_data(book: Any, field: Any) -> list[dict]:
 def _fmt(cell, **kwargs):
     """Apply formatting to a cell, silently skipping unsupported operations.
 
-    xlwings Lite may not implement .font.bold, .color, .merge(), etc.
-    This helper lets us attempt formatting without aborting the whole setup.
+    In xlwings Lite (Office.js), all operations are batched and executed
+    when Python returns. An invalid operation rolls back the ENTIRE batch
+    — including value writes. Only queue operations known to be safe.
+
+    Supported: bold, color, font_color.
+    NOT supported (will poison the batch): merge.
     """
     for key, val in kwargs.items():
         try:
@@ -248,8 +252,7 @@ def _fmt(cell, **kwargs):
                 cell.color = val
             elif key == "font_color":
                 cell.font.color = val
-            elif key == "merge":
-                cell.merge()
+            # merge intentionally omitted — breaks xlwings Lite batch
         except (NotImplementedError, AttributeError):
             pass
 
@@ -266,9 +269,8 @@ def _build_control_sheet(book: Any) -> None:
         book.sheets.add("Control")
     c = book.sheets["Control"]
 
-    # Title banner (A1:F1)
+    # Title banner (A1 — no merge, it poisons the xlwings Lite batch)
     c["A1"].value = "DOCUMENT GENERATOR"
-    _fmt(c.range("A1:F1"), merge=True)
     _fmt(c["A1"], bold=True, color=_HEADER_COLOR, font_color=_HEADER_FONT)
 
     # Document Type selector (Row 3)

@@ -49,12 +49,9 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     In xlwings Lite the Office.js bridge batches all operations and
     syncs them when Python returns.  If any single queued operation
     is invalid the **entire** batch is rolled back — including value
-    writes.  Python ``try/except`` cannot catch these because the
-    error is raised asynchronously in JavaScript, not in Python.
-
-    In Pyodide mode we therefore write **values only** and skip all
-    formatting to avoid poisoning the batch.  Formatting operations
-    are applied only when running in desktop xlwings.
+    writes.  Only operations known to work in both desktop xlwings
+    and xlwings Lite (Office.js) are used here: bold, color,
+    font_color, and number_format.  Notes are desktop-only.
 
     Args:
         sheet: An xlwings Sheet object.
@@ -63,12 +60,7 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     cell = sheet.range((instr.row, instr.col))
     cell.value = instr.value
 
-    # In Pyodide / xlwings Lite, skip ALL formatting to prevent
-    # invalid Office.js operations from rolling back value writes.
-    if IS_PYODIDE:
-        return
-
-    # --- Desktop xlwings formatting (best-effort) ---
+    # --- Formatting (works in both desktop and xlwings Lite) ---
     try:
         if instr.bold:
             cell.font.bold = True
@@ -93,8 +85,10 @@ def apply_cell(sheet: Any, instr: CellInstruction) -> None:
     except Exception:
         pass
 
-    try:
-        if instr.note:
-            cell.note.text = instr.note
-    except Exception:
-        pass
+    # Notes can poison the xlwings Lite batch — desktop only
+    if not IS_PYODIDE:
+        try:
+            if instr.note:
+                cell.note.text = instr.note
+        except Exception:
+            pass
