@@ -40,10 +40,13 @@ Before ending ANY session, always:
 - No `print()` in library code — use `engine.log` helpers; `print()` only in CLI blocks
 
 ## Git Conventions
-- Branch naming: `feature/xxx`, `fix/xxx`, `docs/xxx`
+- **Branching model:** `main` (stable releases) ← `develop` (integration) ← feature branches
+- `develop` is the default branch on GitHub; all PRs target `develop`
+- Only merge `develop` → `main` when a version is stable (tag with `vX.Y.Z`)
+- Branch naming: `feature/xxx`, `fix/xxx`, `docs/xxx` (branch from `develop`)
 - Conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 - Always reference GitHub issue: `feat: add excel builder (#12)`
-- Never commit directly to `main` — always use branches + PRs
+- Never commit directly to `main` or `develop` — always use branches + PRs
 - Squash merge PRs to keep history clean
 
 ## Architecture Quick Reference
